@@ -16,10 +16,12 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.views.generic import RedirectView
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/', include('django.contrib.auth.urls')),
-    path('portfolios/', include('portfolios.urls', namespace="portfolios")),
-    path('', include('portfolios.urls')),  # so “/” redirects/renders the same as /portfolios/
+    path('portfolios/', include(('portfolios.urls', 'portfolios'), namespace='portfolios')),
+    path('', RedirectView.as_view(pattern_name='portfolios:portfolio-list', permanent=False)),
 ]
