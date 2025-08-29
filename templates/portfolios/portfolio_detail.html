@@ -71,6 +71,35 @@
     <p class="text-muted"><em>No holdings in this portfolio yet.</em></p>
   {% endif %}
 
+  <!-- Value Over Time -->
+  <h2 class="h5 mb-3">Value Over Time</h2>
+  <div class="mb-4">
+    <canvas id="historyChart" style="max-width:100%; height:auto;"></canvas>
+  </div>
+
+  {% if portfolio.benchmarks %}
+    <div class="mb-4">
+      <label class="form-label">Toggle benchmarks:</label>
+      <div>
+        {% for bm in benchmark_data %}
+          <div class="form-check form-check-inline">
+            <input
+              class="form-check-input benchmark-toggle"
+              type="checkbox"
+              id="bmToggle{{ forloop.counter0 }}"
+              data-index="{{ forloop.counter0 }}"
+              checked
+            />
+            <label class="form-check-label" for="bmToggle{{ forloop.counter0 }}">
+              {{ bm.label }}
+            </label>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
+
   <!-- Order History -->
   <h2 class="h5 mb-3">Order History</h2>
   {% if orders_data %}
@@ -124,33 +153,8 @@
     <p class="text-muted"><em>No orders have been placed yet.</em></p>
   {% endif %}
 
-  <!-- Value Over Time -->
-  <h2 class="h5 mb-3">Value Over Time</h2>
-  <div class="mb-4">
-    <canvas id="historyChart" style="max-width:100%; height:auto;"></canvas>
-  </div>
 
-  {% if portfolio.benchmarks %}
-    <div class="mb-4">
-      <label class="form-label">Toggle benchmarks:</label>
-      <div>
-        {% for bm in benchmark_data %}
-          <div class="form-check form-check-inline">
-            <input
-              class="form-check-input benchmark-toggle"
-              type="checkbox"
-              id="bmToggle{{ forloop.counter0 }}"
-              data-index="{{ forloop.counter0 }}"
-              checked
-            />
-            <label class="form-check-label" for="bmToggle{{ forloop.counter0 }}">
-              {{ bm.label }}
-            </label>
-          </div>
-        {% endfor %}
-      </div>
-    </div>
-  {% endif %}
+
 {% endblock %}
 
 {% block extra_scripts %}

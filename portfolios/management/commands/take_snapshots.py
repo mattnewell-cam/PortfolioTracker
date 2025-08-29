@@ -68,10 +68,8 @@ class Command(BaseCommand):
             for symbol, qty in p.holdings.items():
                 try:
                     quote = get_quote(symbol)
-                    bid = quote["bid"]
-                    ask = quote["ask"]
                     fx_rate = quote["fx_rate"]
-                    mid_local = (bid + ask) / 2.0
+                    mid_local = quote["price"]
                     total_value += mid_local * fx_rate * qty
                 except Exception as e:
                     self.stderr.write(f"⏱ Skipping {symbol} for Portfolio {p.pk}: {e}")

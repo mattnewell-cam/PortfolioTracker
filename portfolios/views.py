@@ -61,13 +61,15 @@ class PortfolioDetailView(LoginRequiredMixin, DetailView):
             fx_rate   = None
             value_usd = None
 
+            # 1) Fetch price
             try:
-                quote     = get_quote(symbol)  # { "bid":.., "ask":.., "currency":.., "fx_rate":.. }
-                bid       = quote["bid"]
-                ask       = quote["ask"]
-                currency  = quote["currency"]
-                fx_rate   = quote["fx_rate"]
-                mid_local = (bid + ask) / 2.0
+                quote = get_quote(symbol)
+                price = quote["price"]
+                traded_today = quote["traded_today"]
+                currency = quote["currency"]
+                fx_rate = quote["fx_rate"]
+                market_state = quote["market_state"]
+                mid_local = price
                 value_usd = mid_local * fx_rate * qty
             except Exception:
                 # Leave mid_local, currency, fx_rate, value_usd as None
@@ -230,11 +232,11 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
         side = form.cleaned_data["side"]  # "BUY" or "SELL"
         quantity = form.cleaned_data["quantity"]
 
-        # 1) Fetch bid/ask
+        # 1) Fetch price
         try:
             quote = get_quote(symbol)
-            bid_price = quote["bid"]
-            ask_price = quote["ask"]
+            price = quote["price"]
+            traded_today = quote["traded_today"]
             currency = quote["currency"]
             fx_rate = quote["fx_rate"]
             market_state = quote["market_state"]
@@ -251,7 +253,7 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
 
         # 2) Compute execution_price & validate
         if side == "BUY":
-            execution_price = ask_price
+            execution_price = price
             total_cost = execution_price * quantity * fx_rate
             if self.portfolio.cash_balance < total_cost:
                 form.add_error(
@@ -261,7 +263,7 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
                 return self.form_invalid(form)
 
         else:  # SELL
-            execution_price = bid_price
+            execution_price = price
             held_qty = self.portfolio.holdings.get(symbol, 0)
             if held_qty < quantity:
                 form.add_error(

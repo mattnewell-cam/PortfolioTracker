@@ -20,11 +20,14 @@ def get_quote(symbol):
     else:
         fx_rate = 1.0
 
+    traded_today = False if info.get("open") == 0.0 else True
+
     return {
-        "bid": info.get("bid", None),
-        "ask": info.get("ask", None),
+        "price": info.get("currentPrice", None),
+        "traded_today": traded_today,
         "currency": info.get("currency", None),
         "fx_rate": fx_rate,
         "market_state": info.get("marketState", None),
     }
+
 
