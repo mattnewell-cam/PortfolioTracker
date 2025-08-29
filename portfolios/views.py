@@ -54,6 +54,7 @@ class PortfolioDetailView(LoginRequiredMixin, DetailView):
         # 1) Build `positions` for Current Holdings
         #
         positions = []
+        total_value = p.cash_balance
         for symbol, qty in p.holdings.items():
             # Initialize defaults in case fetch fails
             mid_local = None
@@ -83,7 +84,12 @@ class PortfolioDetailView(LoginRequiredMixin, DetailView):
                 "fx_rate":   fx_rate,
                 "value_usd": value_usd,
             })
+
+            if value_usd is not None:
+                total_value += value_usd
+
         ctx["positions"] = positions
+        ctx["total_value"] = total_value
 
 
         #
@@ -236,6 +242,8 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
         try:
             quote = get_quote(symbol)
             price = quote["price"]
+            bid = quote["bid"]
+            ask = quote["ask"]
             traded_today = quote["traded_today"]
             currency = quote["currency"]
             fx_rate = quote["fx_rate"]
@@ -253,7 +261,7 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
 
         # 2) Compute execution_price & validate
         if side == "BUY":
-            execution_price = price
+            execution_price = price if traded_today else ask
             total_cost = execution_price * quantity * fx_rate
             if self.portfolio.cash_balance < total_cost:
                 form.add_error(
@@ -263,7 +271,7 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
                 return self.form_invalid(form)
 
         else:  # SELL
-            execution_price = price
+            execution_price = price if traded_today else bid
             held_qty = self.portfolio.holdings.get(symbol, 0)
             if held_qty < quantity:
                 form.add_error(

@@ -64,6 +64,17 @@
               </td>
             </tr>
           {% endfor %}
+          <tr>
+            <td>Cash</td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td>${{ portfolio.cash_balance|floatformat:2 }}</td>
+          </tr>
+          <tr class="table-light">
+            <td colspan="4"><strong>Total Value</strong></td>
+            <td><strong>${{ total_value|floatformat:2 }}</strong></td>
+          </tr>
         </tbody>
       </table>
     </div>

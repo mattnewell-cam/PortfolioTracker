@@ -24,6 +24,8 @@ def get_quote(symbol):
 
     return {
         "price": info.get("currentPrice", None),
+        "bid": info.get("bid"),
+        "ask": info.get("ask"),
         "traded_today": traded_today,
         "currency": info.get("currency", None),
         "fx_rate": fx_rate,
