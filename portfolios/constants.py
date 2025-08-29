@@ -4,9 +4,9 @@ BENCHMARK_CHOICES = [
     ("^RUT",    "Russell 2000"),
     ("^FTLC",   "FTSE 350"),
     ("^STOXXE", "STOXX Europe 600"),
-    ("^TOPX",   "TOPIX"),
+    ("1308.T",   "TOPIX"),
     ("000300.SS", "CSI 300"),
-    ("^MSCIWO", "MSCI World"),
+    ("^990100-USD-STRD", "MSCI World"),
     ("ACWI",    "MSCI ACWI"),
     ("EEM",     "MSCI Emerging Markets"),
 ]
