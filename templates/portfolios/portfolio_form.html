@@ -1,0 +1,17 @@
+{% extends "portfolios/base.html" %}
+{% block title %}New Portfolio{% endblock %}
+
+{% block content %}
+  <h1 class="mb-4">Create a Portfolio</h1>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <div class="mb-3">
+      {{ form.as_p }}
+    </div>
+    <button class="btn btn-success" type="submit">Save</button>
+    <a class="btn btn-outline-secondary ms-2" href="{% url 'portfolios:portfolio-list' %}">
+      Cancel
+    </a>
+  </form>
+{% endblock %}
+

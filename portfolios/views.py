@@ -1,0 +1,322 @@
+from datetime import timedelta
+from decimal import Decimal
+from django import forms
+from django.shortcuts import redirect, get_object_or_404
+from django.http import JsonResponse
+from django.urls import reverse_lazy
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.decorators import login_required
+from django.views.generic import ListView, DetailView, CreateView
+from bisect import bisect_right
+
+
+from core.yfinance_client import get_quote
+from .models import Portfolio, Order, PortfolioSnapshot
+from .constants import BENCHMARK_CHOICES
+from .forms import PortfolioForm, OrderForm
+import yfinance as yf
+
+
+class PortfolioListView(LoginRequiredMixin, ListView):
+    model = Portfolio
+    template_name = "portfolios/portfolio_list.html"
+    context_object_name = "portfolios"
+
+    def get_queryset(self):
+        return Portfolio.objects.filter(user=self.request.user).order_by("-created_at")
+
+
+class PortfolioCreateView(LoginRequiredMixin, CreateView):
+    model = Portfolio
+    form_class = PortfolioForm
+    template_name = "portfolios/portfolio_form.html"
+    success_url = reverse_lazy("portfolios:portfolio-list")
+
+    def form_valid(self, form):
+        form.instance.user = self.request.user
+        return super().form_valid(form)
+
+
+
+class PortfolioDetailView(LoginRequiredMixin, DetailView):
+    model = Portfolio
+    template_name = "portfolios/portfolio_detail.html"
+    context_object_name = "portfolio"
+
+    def get_queryset(self):
+        return Portfolio.objects.filter(user=self.request.user)
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        p = self.object  # the Portfolio instance
+
+        #
+        # 1) Build `positions` for Current Holdings
+        #
+        positions = []
+        for symbol, qty in p.holdings.items():
+            # Initialize defaults in case fetch fails
+            mid_local = None
+            currency  = None
+            fx_rate   = None
+            value_usd = None
+
+            try:
+                quote     = get_quote(symbol)  # { "bid":.., "ask":.., "currency":.., "fx_rate":.. }
+                bid       = quote["bid"]
+                ask       = quote["ask"]
+                currency  = quote["currency"]
+                fx_rate   = quote["fx_rate"]
+                mid_local = (bid + ask) / 2.0
+                value_usd = mid_local * fx_rate * qty
+            except Exception:
+                # Leave mid_local, currency, fx_rate, value_usd as None
+                pass
+
+            positions.append({
+                "symbol":    symbol,
+                "quantity":  qty,
+                "mid_local": mid_local,
+                "currency":  currency,
+                "fx_rate":   fx_rate,
+                "value_usd": value_usd,
+            })
+        ctx["positions"] = positions
+
+
+        #
+        # 2) Build `orders_data` for Order History
+        #
+        orders_data = []
+        for o in p.orders.all().order_by("-executed_at"):
+            total_usd = o.price_executed * o.fx_rate * o.quantity
+            orders_data.append({
+                "executed_at":     o.executed_at,
+                "symbol":          o.symbol,
+                "side":            o.side,
+                "quantity":        o.quantity,
+                "price_local":     o.price_executed,
+                "currency":        o.currency,
+                "fx_rate":         o.fx_rate,
+                "total_value_usd": total_usd,
+            })
+        ctx["orders_data"] = orders_data
+
+
+        #
+        # 3) Build `history_data` from PortfolioSnapshot
+        #
+        #    Each item: { "date": "2025-06-01", "value": 95000.12 }
+        #
+        history_data = []
+        for snap in p.snapshots.all().order_by("timestamp"):
+            history_data.append({
+                "date":  snap.timestamp.date().isoformat(),
+                "value": snap.total_value,
+            })
+        ctx["history_data"] = history_data
+
+
+        #
+        # 4) Build `benchmark_data` for each ticker in p.benchmarks
+        #
+        benchmark_data = []
+        snaps = list(p.snapshots.all().order_by("timestamp"))
+        if p.benchmarks and snaps:
+            snap_dates = [snap.timestamp.date() for snap in snaps]
+            first_date = snap_dates[0]
+            last_date = snap_dates[-1]
+
+            for ticker in p.benchmarks:
+                label = next((name for sym, name in BENCHMARK_CHOICES if sym == ticker), ticker)
+
+                # 4.a) Fetch a “wide” window from 30 days before → last_date + 1
+                try:
+                    yf_tkr = yf.Ticker(ticker)
+                    hist = yf_tkr.history(
+                        start=(first_date - timedelta(days=30)).isoformat(),
+                        end=(last_date + timedelta(days=1)).isoformat(),
+                        interval="1d"
+                    )
+                except Exception:
+                    hist = None
+
+                daily_points = []
+                if hist is not None and not hist.empty:
+                    hist = hist.sort_index()
+                    closes = hist["Close"]
+                    indexed_dates = [idx.date() for idx in closes.index]
+                    close_values = [float(v) for v in closes.values]
+
+                    for date in snap_dates:
+                        # Find last trading day ≤ date
+                        pos = bisect_right(indexed_dates, date) - 1
+                        if pos < 0:
+                            # no prior data in our window → skip this date
+                            continue
+
+                        last_close = close_values[pos]
+
+                        # 4.b) FX‐rate fallback (same idea: try exact date, else look back up to 7 days)
+                        ccy = yf_tkr.fast_info.get("currency", "USD")
+                        if ccy != "USD":
+                            fx_tkr = yf.Ticker(f"{ccy}USD=X")
+                            fx_rate = 1.0
+                            try:
+                                fx_hist = fx_tkr.history(
+                                    start=date.isoformat(),
+                                    end=(date + timedelta(days=1)).isoformat(),
+                                    interval="1d"
+                                )
+                                if not fx_hist.empty:
+                                    fx_rate = float(fx_hist["Close"].iloc[0])
+                                else:
+                                    fx_hist2 = fx_tkr.history(
+                                        start=(date - timedelta(days=7)).isoformat(),
+                                        end=(date + timedelta(days=1)).isoformat(),
+                                        interval="1d"
+                                    )
+                                    fx_hist2 = fx_hist2[fx_hist2.index.date <= date]
+                                    if not fx_hist2.empty:
+                                        fx_rate = float(fx_hist2["Close"].iloc[-1])
+                            except Exception:
+                                fx_rate = 1.0
+                        else:
+                            fx_rate = 1.0
+
+                        price_usd = last_close * fx_rate
+                        daily_points.append({
+                            "date": date.isoformat(),
+                            "price_usd": price_usd,
+                        })
+
+                # Scale to $100,000
+                if daily_points:
+                    base_price = daily_points[0]["price_usd"]
+                    for pt in daily_points:
+                        pt["price_usd"] = (pt["price_usd"] / base_price) * 100_000
+
+                benchmark_data.append({
+                    "ticker": ticker,
+                    "label": label,
+                    "data": daily_points,
+                })
+
+        ctx["benchmark_data"] = benchmark_data
+
+        return ctx
+
+class OrderCreateView(LoginRequiredMixin, CreateView):
+    model = Order
+    form_class = OrderForm
+    template_name = "portfolios/order_form.html"
+
+    # ----UTILS----
+    def dispatch(self, request, *args, **kwargs):
+        # Fetch the portfolio object once, ensure it belongs to this user
+        self.portfolio = Portfolio.objects.get(pk=kwargs["pk"], user=request.user)
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["portfolio"] = self.portfolio
+        return ctx
+    #-------------
+
+    def form_valid(self, form):
+        form.instance.portfolio = self.portfolio
+
+        symbol = form.cleaned_data["symbol"].upper()
+        side = form.cleaned_data["side"]  # "BUY" or "SELL"
+        quantity = form.cleaned_data["quantity"]
+
+        # 1) Fetch bid/ask
+        try:
+            quote = get_quote(symbol)
+            bid_price = quote["bid"]
+            ask_price = quote["ask"]
+            currency = quote["currency"]
+            fx_rate = quote["fx_rate"]
+            market_state = quote["market_state"]
+        except Exception:
+            form.add_error(None, f"Could not fetch live quote for “{symbol}”.")
+            return self.form_invalid(form)
+
+        # if market_state != "REGULAR":
+        #     form.add_error(
+        #         None,
+        #         "Order failed because the market is currently closed."
+        #     )
+        #     return self.form_invalid(form)
+
+        # 2) Compute execution_price & validate
+        if side == "BUY":
+            execution_price = ask_price
+            total_cost = execution_price * quantity * fx_rate
+            if self.portfolio.cash_balance < total_cost:
+                form.add_error(
+                    None,
+                    f"Insufficient cash: need ${total_cost:.2f}, have ${self.portfolio.cash_balance:.2f}."
+                )
+                return self.form_invalid(form)
+
+        else:  # SELL
+            execution_price = bid_price
+            held_qty = self.portfolio.holdings.get(symbol, 0)
+            if held_qty < quantity:
+                form.add_error(
+                    None,
+                    f"Cannot sell {quantity} shares of {symbol}; you only hold {held_qty}."
+                )
+                return self.form_invalid(form)
+
+        # 3) Assign price and save Order
+        form.instance.price_executed = execution_price
+        form.instance.fx_rate = fx_rate
+        form.instance.currency = currency
+        response = super().form_valid(form)
+
+        # 4) Update cash_balance and holdings
+        if side == "BUY":
+            self.portfolio.cash_balance -= execution_price * quantity * fx_rate
+            new_qty = float(self.portfolio.holdings.get(symbol, 0)) + quantity
+            self.portfolio.holdings[symbol] = new_qty
+        else:  # SELL
+            self.portfolio.cash_balance += execution_price * quantity * fx_rate
+            remaining = float(self.portfolio.holdings.get(symbol, 0)) - quantity
+            if remaining == 0:
+                # remove key if zero
+                self.portfolio.holdings.pop(symbol, None)
+            else:
+                self.portfolio.holdings[symbol] = remaining
+
+        self.portfolio.save()
+        return response
+
+
+
+    def form_invalid(self, form):
+        """
+        If validation fails above, form.add_error(…) was called.
+        Returning form_invalid(form) will re-render the page with errors.
+        """
+        return super().form_invalid(form)
+
+    def get_success_url(self):
+        return reverse_lazy("portfolios:portfolio-detail", kwargs={"pk": self.portfolio.pk})
+
+
+@login_required
+def portfolio_history(request, pk):
+    p = Portfolio.objects.filter(pk=pk, user=request.user).first()
+    if not p:
+        return JsonResponse({"error": "Not found"}, status=404)
+
+    data = [
+        {
+            "timestamp": snap.timestamp.isoformat(),
+            "value": snap.total_value,
+        }
+        for snap in p.snapshots.all()
+    ]
+    return JsonResponse(data, safe=False)

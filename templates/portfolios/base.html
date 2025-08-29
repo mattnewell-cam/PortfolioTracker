@@ -1,0 +1,76 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Virtual Portfolio{% endblock %}</title>
+
+  <!-- Bootstrap 5 CSS -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+    integrity="sha384-ENjdO4Dr2bkBIFxQpeoYzAWu6f2YaQ/H6g9JDbP/O5yFIhj7x0Exz0Q5V5yFkp6I"
+    crossorigin="anonymous"
+  />
+
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <!-- Bootstrap Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="{% url 'portfolios:portfolio-list' %}">My Portfolios</a>
+      <button
+        class="navbar-toggler"
+        type="button"
+        data-bs-toggle="collapse"
+        data-bs-target="#navbarSupportedContent"
+        aria-controls="navbarSupportedContent"
+        aria-expanded="false"
+        aria-label="Toggle navigation"
+      >
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+          {% if user.is_authenticated %}
+            <li class="nav-item">
+              <span class="nav-link">Hello, {{ user.username }}!</span>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link btn btn-outline-secondary ms-2" href="{% url 'logout' %}">
+                Logout
+              </a>
+            </li>
+          {% else %}
+            <li class="nav-item">
+              <a class="nav-link btn btn-outline-primary" href="{% url 'login' %}">
+                Login
+              </a>
+            </li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <section class="py-4">
+    <div class="container">
+      {% block content %}
+      <!-- page‐specific content -->
+      {% endblock %}
+    </div>
+  </section>
+
+  {% block extra_scripts %}{% endblock %}
+
+  <!-- Bootstrap 5 JS Bundle (Popper + JS) -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-keA4ReL2qLaRre3enK0264PAa3q9vT+QuImWEZLv/svQKUoP5SvXJMfVnN0Wv2Q5"
+    crossorigin="anonymous"
+  ></script>
+</body>
+</html>
