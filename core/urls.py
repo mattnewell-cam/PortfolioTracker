@@ -18,9 +18,12 @@ from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import RedirectView
 
+from . import views
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('accounts/register/', views.register, name='register'),
     path('accounts/', include('django.contrib.auth.urls')),
     path('portfolios/', include(('portfolios.urls', 'portfolios'), namespace='portfolios')),
     path('', RedirectView.as_view(pattern_name='portfolios:portfolio-list', permanent=False)),
