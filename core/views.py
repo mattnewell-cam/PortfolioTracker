@@ -2,6 +2,8 @@ from django.contrib.auth import login
 from django.contrib.auth.forms import UserCreationForm
 from django.shortcuts import render, redirect
 
+from portfolios.models import Portfolio
+
 
 def register(request):
     """Register a new user and log them in."""
@@ -10,7 +12,8 @@ def register(request):
         if form.is_valid():
             user = form.save()
             login(request, user)
-            return redirect("portfolios:portfolio-list")
+            Portfolio.objects.create(user=user, name="My Portfolio")
+            return redirect("portfolios:portfolio-detail")
     else:
         form = UserCreationForm()
     return render(request, "registration/register.html", {"form": form})

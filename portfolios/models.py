@@ -7,12 +7,9 @@ from django.core.validators import MinValueValidator
 User = get_user_model()
 
 class Portfolio(models.Model):
-    """
-    Each user can have one or more portfolios.
-    We'll start with a simple 'name' and a cash balance.
-    """
-    user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="portfolios"
+    """A single portfolio associated with each user."""
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name="portfolio"
     )
     name = models.CharField(max_length=100)
     cash_balance = models.FloatField(default=100000.00, validators=[MinValueValidator(0)])
