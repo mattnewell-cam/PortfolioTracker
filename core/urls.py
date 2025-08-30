@@ -26,5 +26,5 @@ urlpatterns = [
     path('accounts/register/', views.register, name='register'),
     path('accounts/', include('django.contrib.auth.urls')),
     path('portfolios/', include(('portfolios.urls', 'portfolios'), namespace='portfolios')),
-    path('', RedirectView.as_view(pattern_name='portfolios:portfolio-list', permanent=False)),
+    path('', RedirectView.as_view(pattern_name='portfolios:portfolio-detail', permanent=False)),
 ]
