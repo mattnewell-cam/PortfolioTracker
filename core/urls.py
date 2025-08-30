@@ -24,6 +24,7 @@ from . import views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/register/', views.register, name='register'),
+    path('accounts/verify-substack/', views.verify_substack, name='verify-substack'),
     path('accounts/', include('django.contrib.auth.urls')),
     path('portfolios/', include(('portfolios.urls', 'portfolios'), namespace='portfolios')),
     path('', RedirectView.as_view(pattern_name='portfolios:portfolio-detail', permanent=False)),
