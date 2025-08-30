@@ -12,6 +12,7 @@ class Portfolio(models.Model):
         User, on_delete=models.CASCADE, related_name="portfolio"
     )
     name = models.CharField(max_length=100)
+    substack_url = models.URLField(unique=True, blank=True, null=True)
     cash_balance = models.FloatField(default=100000.00, validators=[MinValueValidator(0)])
     holdings = JSONField(default=dict)
     benchmarks = JSONField(default=list)

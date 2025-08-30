@@ -1,0 +1,22 @@
+{% extends "portfolios/base.html" %}
+{% block title %}Verify Substack{% endblock %}
+{% block content %}
+<div class="container my-5" style="max-width:420px;">
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <h1 class="h4 mb-3">Verify Substack</h1>
+      <p>Add the following code to your Substack about page (<a href="{{ substack_url }}">{{ substack_url }}</a>) then click verify:</p>
+      <pre class="bg-light p-3">{{ nonce }}</pre>
+      {% if messages %}
+        {% for message in messages %}
+          <div class="text-danger">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+      <form method="post">
+        {% csrf_token %}
+        <button class="btn btn-primary w-100" type="submit">Verify</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
