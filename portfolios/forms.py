@@ -30,3 +30,7 @@ class OrderForm(forms.ModelForm):
         widgets = {
             "side": forms.Select(choices=Order.SIDE_CHOICES),
         }
+
+
+class PortfolioLookupForm(forms.Form):
+    substack_url = forms.URLField(label="Substack URL")

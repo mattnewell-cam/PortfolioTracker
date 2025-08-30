@@ -1,0 +1,16 @@
+{% extends "portfolios/base.html" %}
+{% block title %}View Portfolio{% endblock %}
+{% block content %}
+<div class="container my-5" style="max-width:420px;">
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <h1 class="h4 mb-3">View Portfolio</h1>
+      <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button class="btn btn-primary w-100" type="submit">View</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
