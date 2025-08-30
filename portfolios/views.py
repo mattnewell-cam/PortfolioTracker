@@ -8,7 +8,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.views.generic import ListView, DetailView, CreateView
 from bisect import bisect_right
-
+from django.utils import timezone
 
 from core.yfinance_client import get_quote
 from .models import Portfolio, Order, PortfolioSnapshot
@@ -111,17 +111,22 @@ class PortfolioDetailView(LoginRequiredMixin, DetailView):
         ctx["orders_data"] = orders_data
 
 
-        #
         # 3) Build `history_data` from PortfolioSnapshot
-        #
         #    Each item: { "date": "2025-06-01", "value": 95000.12 }
-        #
         history_data = []
         for snap in p.snapshots.all().order_by("timestamp"):
             history_data.append({
                 "date":  snap.timestamp.date().isoformat(),
                 "value": snap.total_value,
             })
+
+        # If portfolio has just been created, add initial datapoint
+        if not history_data:
+            history_data.append({
+                "date": timezone.now().date().isoformat(),
+                "value": total_value,
+            })
+
         ctx["history_data"] = history_data
 
 
@@ -329,4 +334,20 @@ def portfolio_history(request, pk):
         }
         for snap in p.snapshots.all()
     ]
+
+    # Create single datapoint if no snapshots
+    if not data:
+        total_value = p.cash_balance
+        for symbol, qty in p.holdings.items():
+            try:
+                quote = get_quote(symbol)
+                total_value += quote["price"] * quote["fx_rate"] * qty
+            except Exception:
+                pass
+        data.append({
+            "timestamp": timezone.now().isoformat(),
+            "value": total_value,
+        })
+
+
     return JsonResponse(data, safe=False)
