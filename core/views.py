@@ -35,6 +35,13 @@ def verify_substack(request):
         return redirect("register")
 
     if request.method == "POST":
+        if Portfolio.objects.filter(substack_url=pending["substack_url"]).exists():
+            messages.error(
+                request, "This Substack URL is already linked to another account."
+            )
+            del request.session["pending_user"]
+            return redirect("register")
+
         substack_about = pending["substack_url"].rstrip("/") + "/about"
         try:
             resp = requests.get(substack_about, timeout=5)
@@ -44,7 +51,11 @@ def verify_substack(request):
                     pending["username"], password=pending["password1"]
                 )
                 login(request, user)
-                Portfolio.objects.create(user=user, name="My Portfolio")
+                Portfolio.objects.create(
+                    user=user,
+                    name="My Portfolio",
+                    substack_url=pending["substack_url"],
+                )
                 del request.session["pending_user"]
                 return redirect("portfolios:portfolio-detail")
         except requests.RequestException:

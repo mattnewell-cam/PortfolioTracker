@@ -39,4 +39,30 @@ class RegistrationTests(TestCase):
         response = self.client.post(reverse('verify-substack'))
         self.assertRedirects(response, reverse('portfolios:portfolio-detail'))
         self.assertTrue(User.objects.filter(username='newuser').exists())
-        self.assertTrue(Portfolio.objects.filter(user__username='newuser').exists())
+        self.assertTrue(
+            Portfolio.objects.filter(
+                user__username='newuser',
+                substack_url='https://example.substack.com',
+            ).exists()
+        )
+
+    def test_duplicate_substack_url_not_allowed(self):
+        user = User.objects.create_user('existing', password='pass')
+        Portfolio.objects.create(
+            user=user,
+            name='My Portfolio',
+            substack_url='https://example.substack.com',
+        )
+        response = self.client.post(
+            reverse('register'),
+            {
+                'username': 'newuser',
+                'password1': 'strong-pass-123',
+                'password2': 'strong-pass-123',
+                'substack_url': 'https://example.substack.com',
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'already linked')
+        self.assertFalse(User.objects.filter(username='newuser').exists())
+        self.assertNotIn('pending_user', self.client.session)
