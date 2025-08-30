@@ -1,12 +1,10 @@
 from datetime import timedelta
-from decimal import Decimal
-from django import forms
 from django.shortcuts import redirect, get_object_or_404
 from django.http import JsonResponse
 from django.urls import reverse_lazy
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
-from django.views.generic import ListView, DetailView, CreateView
+from django.views.generic import DetailView, CreateView
 from bisect import bisect_right
 
 
@@ -17,20 +15,16 @@ from .forms import PortfolioForm, OrderForm
 import yfinance as yf
 
 
-class PortfolioListView(LoginRequiredMixin, ListView):
-    model = Portfolio
-    template_name = "portfolios/portfolio_list.html"
-    context_object_name = "portfolios"
-
-    def get_queryset(self):
-        return Portfolio.objects.filter(user=self.request.user).order_by("-created_at")
-
-
 class PortfolioCreateView(LoginRequiredMixin, CreateView):
     model = Portfolio
     form_class = PortfolioForm
     template_name = "portfolios/portfolio_form.html"
-    success_url = reverse_lazy("portfolios:portfolio-list")
+    success_url = reverse_lazy("portfolios:portfolio-detail")
+
+    def dispatch(self, request, *args, **kwargs):
+        if Portfolio.objects.filter(user=request.user).exists():
+            return redirect("portfolios:portfolio-detail")
+        return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
         form.instance.user = self.request.user
@@ -43,8 +37,13 @@ class PortfolioDetailView(LoginRequiredMixin, DetailView):
     template_name = "portfolios/portfolio_detail.html"
     context_object_name = "portfolio"
 
-    def get_queryset(self):
-        return Portfolio.objects.filter(user=self.request.user)
+    def dispatch(self, request, *args, **kwargs):
+        if not Portfolio.objects.filter(user=request.user).exists():
+            return redirect("portfolios:portfolio-create")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_object(self, queryset=None):
+        return get_object_or_404(Portfolio, user=self.request.user)
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -222,7 +221,7 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
     # ----UTILS----
     def dispatch(self, request, *args, **kwargs):
         # Fetch the portfolio object once, ensure it belongs to this user
-        self.portfolio = Portfolio.objects.get(pk=kwargs["pk"], user=request.user)
+        self.portfolio = get_object_or_404(Portfolio, user=request.user)
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
@@ -313,12 +312,12 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
         return super().form_invalid(form)
 
     def get_success_url(self):
-        return reverse_lazy("portfolios:portfolio-detail", kwargs={"pk": self.portfolio.pk})
+        return reverse_lazy("portfolios:portfolio-detail")
 
 
 @login_required
-def portfolio_history(request, pk):
-    p = Portfolio.objects.filter(pk=pk, user=request.user).first()
+def portfolio_history(request):
+    p = Portfolio.objects.filter(user=request.user).first()
     if not p:
         return JsonResponse({"error": "Not found"}, status=404)
 
