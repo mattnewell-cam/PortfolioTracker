@@ -7,14 +7,17 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.views.generic import DetailView, CreateView, FormView, ListView
 from django.db.models import Q
+from django.core.serializers.json import DjangoJSONEncoder
 from bisect import bisect_right
 from django.utils import timezone
+from decimal import Decimal
 
 from core.yfinance_client import get_quote
 from .models import Portfolio, Order, PortfolioSnapshot
 from .constants import BENCHMARK_CHOICES
 from .forms import PortfolioForm, OrderForm, PortfolioLookupForm
 import yfinance as yf
+import json
 
 
 def build_portfolio_context(p, include_details=True):
@@ -26,12 +29,13 @@ def build_portfolio_context(p, include_details=True):
             mid_local = currency = fx_rate = value_usd = None
             try:
                 quote = get_quote(symbol)
-                price = quote["price"]
-                traded_today = quote["traded_today"]
-                currency = quote["currency"]
-                fx_rate = quote["fx_rate"]
-                mid_local = price
-                value_usd = mid_local * fx_rate * qty
+                price_val = quote.get("price")
+                currency = quote.get("currency")
+                fx_rate_val = quote.get("fx_rate")
+                if price_val is not None and fx_rate_val is not None:
+                    mid_local = Decimal(str(price_val))
+                    fx_rate = Decimal(str(fx_rate_val))
+                    value_usd = mid_local * fx_rate * Decimal(str(qty))
             except Exception:
                 pass
             positions.append({
@@ -152,7 +156,9 @@ def build_portfolio_context(p, include_details=True):
         "total_value": total_value,
         "orders_data": orders_data if include_details else [],
         "history_data": history_data,
+        "history_data_json": json.dumps(history_data, cls=DjangoJSONEncoder),
         "benchmark_data": benchmark_data,
+        "benchmark_data_json": json.dumps(benchmark_data, cls=DjangoJSONEncoder),
         "default_benchmarks": p.benchmarks,
     }
 
@@ -282,12 +288,12 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
         # 1) Fetch price
         try:
             quote = get_quote(symbol)
-            price = quote["price"]
-            bid = quote["bid"]
-            ask = quote["ask"]
+            price = Decimal(str(quote["price"]))
+            bid = Decimal(str(quote["bid"])) if quote.get("bid") is not None else None
+            ask = Decimal(str(quote["ask"])) if quote.get("ask") is not None else None
             traded_today = quote["traded_today"]
             currency = quote["currency"]
-            fx_rate = quote["fx_rate"]
+            fx_rate = Decimal(str(quote["fx_rate"]))
             market_state = quote["market_state"]
         except Exception:
             form.add_error(None, f"Could not fetch live quote for “{symbol}”.")
@@ -303,7 +309,7 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
         # 2) Compute execution_price & validate
         if side == "BUY":
             execution_price = price if traded_today else ask
-            total_cost = execution_price * quantity * fx_rate
+            total_cost = execution_price * fx_rate * quantity
             if self.portfolio.cash_balance < total_cost:
                 form.add_error(
                     None,
@@ -329,11 +335,11 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
 
         # 4) Update cash_balance and holdings
         if side == "BUY":
-            self.portfolio.cash_balance -= execution_price * quantity * fx_rate
+            self.portfolio.cash_balance -= execution_price * fx_rate * quantity
             new_qty = float(self.portfolio.holdings.get(symbol, 0)) + quantity
             self.portfolio.holdings[symbol] = new_qty
         else:  # SELL
-            self.portfolio.cash_balance += execution_price * quantity * fx_rate
+            self.portfolio.cash_balance += execution_price * fx_rate * quantity
             remaining = float(self.portfolio.holdings.get(symbol, 0)) - quantity
             if remaining == 0:
                 # remove key if zero
@@ -376,7 +382,7 @@ def portfolio_history(request):
         for symbol, qty in p.holdings.items():
             try:
                 quote = get_quote(symbol)
-                total_value += quote["price"] * quote["fx_rate"] * qty
+                total_value += Decimal(str(quote["price"])) * Decimal(str(quote["fx_rate"])) * Decimal(str(qty))
             except Exception:
                 pass
         data.append({
