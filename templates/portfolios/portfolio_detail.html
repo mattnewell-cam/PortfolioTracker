@@ -106,27 +106,25 @@
     <canvas id="historyChart" style="max-width:100%; height:auto;"></canvas>
   </div>
 
-  {% if portfolio.benchmarks %}
-    <div class="mb-4">
-      <label class="form-label">Toggle benchmarks:</label>
-      <div>
-        {% for bm in benchmark_data %}
-          <div class="form-check form-check-inline">
-            <input
-              class="form-check-input benchmark-toggle"
-              type="checkbox"
-              id="bmToggle{{ forloop.counter0 }}"
-              data-index="{{ forloop.counter0 }}"
-              checked
-            />
-            <label class="form-check-label" for="bmToggle{{ forloop.counter0 }}">
-              {{ bm.label }}
-            </label>
-          </div>
-        {% endfor %}
-      </div>
+  <div class="mb-4">
+    <label class="form-label">Toggle benchmarks:</label>
+    <div>
+      {% for bm in benchmark_data %}
+        <div class="form-check form-check-inline">
+          <input
+            class="form-check-input benchmark-toggle"
+            type="checkbox"
+            id="bmToggle{{ forloop.counter0 }}"
+            data-index="{{ forloop.counter0 }}"
+            {% if bm.ticker in default_benchmarks %}checked{% endif %}
+          />
+          <label class="form-check-label" for="bmToggle{{ forloop.counter0 }}">
+            {{ bm.label }}
+          </label>
+        </div>
+      {% endfor %}
     </div>
-  {% endif %}
+  </div>
 
 
   {% if not private_view %}
@@ -207,23 +205,24 @@
         fill: false
       }];
 
-      // 2) Add one dataset per benchmark
-      const benchmarkData = {{ benchmark_data|safe }};
-      benchmarkData.forEach((bm, idx) => {
-        const priceMap = {};
-        bm.data.forEach(pt => priceMap[pt.date] = pt.price_usd);
-        const bmPrices = labels.map(date => priceMap[date] ?? null);
+        // 2) Add one dataset per benchmark
+        const benchmarkData = {{ benchmark_data|safe }};
+        const defaultBenchmarks = {{ default_benchmarks|safe }};
+        benchmarkData.forEach((bm, idx) => {
+          const priceMap = {};
+          bm.data.forEach(pt => priceMap[pt.date] = pt.price_usd);
+          const bmPrices = labels.map(date => priceMap[date] ?? null);
 
-        datasets.push({
-          label: bm.label,
-          data: bmPrices,
-          borderColor: `rgba(${50 + idx*60}, ${100 + idx*30}, ${200 - idx*40}, 1)`,
-          backgroundColor: `rgba(${50 + idx*60}, ${100 + idx*30}, ${200 - idx*40}, 0.2)`,
-          borderWidth: 1.5,
-          fill: false,
-          hidden: false
+          datasets.push({
+            label: bm.label,
+            data: bmPrices,
+            borderColor: `rgba(${50 + idx*60}, ${100 + idx*30}, ${200 - idx*40}, 1)`,
+            backgroundColor: `rgba(${50 + idx*60}, ${100 + idx*30}, ${200 - idx*40}, 0.2)`,
+            borderWidth: 1.5,
+            fill: false,
+            hidden: !defaultBenchmarks.includes(bm.ticker)
+          });
         });
-      });
 
       // 3) Instantiate Chart.js
       const ctx = document.getElementById("historyChart").getContext("2d");
