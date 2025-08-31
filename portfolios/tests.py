@@ -24,8 +24,9 @@ class RegistrationTests(TestCase):
         self.assertRedirects(response, reverse('verify-substack'))
         self.assertFalse(User.objects.filter(username='newuser').exists())
 
+    @patch('core.views.feedparser.parse')
     @patch('core.views.requests.get')
-    def test_substack_verification_creates_user(self, mock_get):
+    def test_substack_verification_creates_user(self, mock_get, mock_parse):
         self.client.post(
             reverse('register'),
             {
@@ -38,9 +39,9 @@ class RegistrationTests(TestCase):
         nonce = self.client.session['pending_user']['nonce']
         mock_about = Mock()
         mock_about.text = f"about page with {nonce}"
-        mock_feed = Mock()
-        mock_feed.content = b"<rss><channel><title>Example Stack</title><subtitle>Short desc</subtitle></channel></rss>"
-        mock_get.side_effect = [mock_about, mock_feed]
+        mock_feed = Mock(feed={'title': 'Example Stack', 'subtitle': 'Short desc'})
+        mock_get.return_value = mock_about
+        mock_parse.return_value = mock_feed
 
         response = self.client.post(reverse('verify-substack'))
         self.assertRedirects(response, reverse('portfolios:portfolio-detail'))

@@ -1,11 +1,11 @@
 import secrets
 
 import requests
+import feedparser
 from urllib.parse import urlparse, urlunparse
 from django.contrib import messages
 from django.contrib.auth import login, get_user_model
 from django.shortcuts import render, redirect
-import xml.etree.ElementTree as ET
 
 from portfolios.models import Portfolio
 
@@ -63,13 +63,10 @@ def verify_substack(request):
                 title = ""
                 subtitle = ""
                 try:
-                    feed_resp = requests.get(feed_url, timeout=5)
-                    root = ET.fromstring(feed_resp.content)
-                    channel = root.find("channel")
-                    if channel is not None:
-                        title = channel.findtext("title") or ""
-                        subtitle = channel.findtext("subtitle") or ""
-                except (requests.RequestException, ET.ParseError):
+                    feed = feedparser.parse(feed_url)
+                    title = feed.feed.get("title", "")
+                    subtitle = feed.feed.get("subtitle") or feed.feed.get("description") or ""
+                except Exception:
                     pass
 
                 User = get_user_model()
