@@ -2,8 +2,12 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 from unittest.mock import Mock, patch
+import pandas as pd
+from django.utils import timezone
 
-from .models import Portfolio, Order
+from .models import Portfolio, Order, PortfolioSnapshot
+from .constants import BENCHMARK_CHOICES
+from .views import build_portfolio_context
 
 
 class RegistrationTests(TestCase):
@@ -165,3 +169,32 @@ class PortfolioPrivacyToggleTests(TestCase):
             reverse('portfolios:portfolio-public-detail', args=[self.portfolio.pk])
         )
         self.assertNotContains(response, 'Make Portfolio')
+
+
+class BenchmarkContextTests(TestCase):
+    @patch('portfolios.views.yf.Ticker')
+    def test_context_includes_all_benchmarks_and_defaults(self, mock_ticker):
+        mock_instance = Mock()
+        mock_instance.history.return_value = pd.DataFrame({
+            'Close': [100.0]
+        }, index=[pd.Timestamp('2024-01-01')])
+        mock_instance.fast_info = {'currency': 'USD'}
+        mock_ticker.return_value = mock_instance
+
+        user = User.objects.create_user('bench', password='pass')
+        portfolio = Portfolio.objects.create(
+            user=user,
+            name='Bench Portfolio',
+            substack_url='https://bench.substack.com',
+            benchmarks=[BENCHMARK_CHOICES[0][0], BENCHMARK_CHOICES[1][0]],
+        )
+        PortfolioSnapshot.objects.create(
+            portfolio=portfolio,
+            timestamp=timezone.now(),
+            total_value=100000,
+        )
+
+        ctx = build_portfolio_context(portfolio)
+        self.assertEqual(ctx['default_benchmarks'], portfolio.benchmarks)
+        self.assertEqual(len(ctx['benchmark_data']), len(BENCHMARK_CHOICES))
+

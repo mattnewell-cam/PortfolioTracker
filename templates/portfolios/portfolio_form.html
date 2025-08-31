@@ -3,6 +3,9 @@
 
 {% block content %}
   <h1 class="mb-4">Create a Portfolio</h1>
+  <div class="alert alert-warning">
+    Benchmark selections are permanent and cannot be changed later. Choose carefully.
+  </div>
   <form method="post" novalidate>
     {% csrf_token %}
     <div class="mb-3">

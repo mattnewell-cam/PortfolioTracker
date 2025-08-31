@@ -20,6 +20,7 @@ def register(request):
                 "username": form.cleaned_data["username"],
                 "password1": form.cleaned_data["password1"],
                 "substack_url": form.cleaned_data["substack_url"],
+                "benchmarks": form.cleaned_data["benchmarks"],
                 "nonce": nonce,
             }
             return redirect("verify-substack")
@@ -55,6 +56,7 @@ def verify_substack(request):
                     user=user,
                     name="My Portfolio",
                     substack_url=pending["substack_url"],
+                    benchmarks=pending.get("benchmarks", []),
                 )
                 del request.session["pending_user"]
                 return redirect("portfolios:portfolio-detail")

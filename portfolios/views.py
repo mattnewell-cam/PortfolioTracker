@@ -73,12 +73,12 @@ def build_portfolio_context(p, include_details=True):
 
     benchmark_data = []
     snaps = list(p.snapshots.all().order_by("timestamp"))
-    if p.benchmarks and snaps:
+    if snaps:
         snap_dates = [snap.timestamp.date() for snap in snaps]
         first_date = snap_dates[0]
         last_date = snap_dates[-1]
-        for ticker in p.benchmarks:
-            label = next((name for sym, name in BENCHMARK_CHOICES if sym == ticker), ticker)
+        for ticker, name in BENCHMARK_CHOICES:
+            label = name
             try:
                 yf_tkr = yf.Ticker(ticker)
                 hist = yf_tkr.history(
@@ -138,6 +138,13 @@ def build_portfolio_context(p, include_details=True):
                 "label": label,
                 "data": daily_points,
             })
+    else:
+        for ticker, name in BENCHMARK_CHOICES:
+            benchmark_data.append({
+                "ticker": ticker,
+                "label": name,
+                "data": [],
+            })
 
     return {
         "positions": positions if include_details else [],
@@ -145,6 +152,7 @@ def build_portfolio_context(p, include_details=True):
         "orders_data": orders_data if include_details else [],
         "history_data": history_data,
         "benchmark_data": benchmark_data,
+        "default_benchmarks": p.benchmarks,
     }
 
 

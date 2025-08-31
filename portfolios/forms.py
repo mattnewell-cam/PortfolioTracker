@@ -9,7 +9,7 @@ class PortfolioForm(forms.ModelForm):
         choices=BENCHMARK_CHOICES,
         required=False,
         widget=forms.CheckboxSelectMultiple,
-        help_text="Select up to 3 indices to benchmark against."
+        help_text="Select up to 3 indices to benchmark against. This choice is permanent, so choose carefully."
     )
 
     class Meta:
