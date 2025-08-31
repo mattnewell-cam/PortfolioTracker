@@ -5,6 +5,11 @@
 {% block content %}
   <h1 class="mb-4">{{ portfolio.name }}</h1>
 
+  {% if private_view %}
+    <p class="text-muted"><em>This portfolio is private. Only the value chart is visible.</em></p>
+  {% endif %}
+
+  {% if not private_view %}
   <div class="card mb-4">
     <div class="card-body">
       <p>
@@ -80,6 +85,7 @@
   {% else %}
     <p class="text-muted"><em>No holdings in this portfolio yet.</em></p>
   {% endif %}
+  {% endif %}
 
   <!-- Value Over Time -->
   <h2 class="h5 mb-3">Value Over Time</h2>
@@ -110,6 +116,7 @@
   {% endif %}
 
 
+  {% if not private_view %}
   <!-- Order History -->
   <h2 class="h5 mb-3">Order History</h2>
   {% if orders_data %}
@@ -161,6 +168,7 @@
     </div>
   {% else %}
     <p class="text-muted"><em>No orders have been placed yet.</em></p>
+  {% endif %}
   {% endif %}
 
 

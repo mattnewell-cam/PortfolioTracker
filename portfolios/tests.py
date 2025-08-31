@@ -3,7 +3,7 @@ from django.test import TestCase
 from django.urls import reverse
 from unittest.mock import Mock, patch
 
-from .models import Portfolio
+from .models import Portfolio, Order
 
 
 class RegistrationTests(TestCase):
@@ -101,3 +101,36 @@ class PublicPortfolioTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'No portfolio found')
+
+
+class PrivatePortfolioTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user('owner', password='pass')
+        self.portfolio = Portfolio.objects.create(
+            user=self.owner,
+            name='Private Portfolio',
+            substack_url='https://private.substack.com',
+            is_private=True,
+            holdings={'AAPL': 1},
+            cash_balance=1000,
+        )
+        Order.objects.create(
+            portfolio=self.portfolio,
+            symbol='AAPL',
+            side='BUY',
+            quantity=1,
+            price_executed=100,
+            currency='USD',
+            fx_rate=1.0,
+        )
+
+    def test_public_view_hides_positions_and_orders(self):
+        response = self.client.get(
+            reverse('portfolios:portfolio-public-detail', args=[self.portfolio.pk])
+        )
+        self.assertContains(response, 'Value Over Time')
+        self.assertContains(response, 'This portfolio is private')
+        self.assertNotContains(response, 'Current Holdings')
+        self.assertNotContains(response, 'Order History')
+        self.assertEqual(response.context['positions'], [])
+        self.assertEqual(response.context['orders_data'], [])

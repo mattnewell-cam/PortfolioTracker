@@ -15,46 +15,48 @@ from .forms import PortfolioForm, OrderForm, PortfolioLookupForm
 import yfinance as yf
 
 
-def build_portfolio_context(p):
+def build_portfolio_context(p, include_details=True):
     """Return context data for a portfolio."""
     positions = []
     total_value = p.cash_balance
-    for symbol, qty in p.holdings.items():
-        mid_local = currency = fx_rate = value_usd = None
-        try:
-            quote = get_quote(symbol)
-            price = quote["price"]
-            traded_today = quote["traded_today"]
-            currency = quote["currency"]
-            fx_rate = quote["fx_rate"]
-            mid_local = price
-            value_usd = mid_local * fx_rate * qty
-        except Exception:
-            pass
-        positions.append({
-            "symbol": symbol,
-            "quantity": qty,
-            "mid_local": mid_local,
-            "currency": currency,
-            "fx_rate": fx_rate,
-            "value_usd": value_usd,
-        })
-        if value_usd is not None:
-            total_value += value_usd
+    if include_details:
+        for symbol, qty in p.holdings.items():
+            mid_local = currency = fx_rate = value_usd = None
+            try:
+                quote = get_quote(symbol)
+                price = quote["price"]
+                traded_today = quote["traded_today"]
+                currency = quote["currency"]
+                fx_rate = quote["fx_rate"]
+                mid_local = price
+                value_usd = mid_local * fx_rate * qty
+            except Exception:
+                pass
+            positions.append({
+                "symbol": symbol,
+                "quantity": qty,
+                "mid_local": mid_local,
+                "currency": currency,
+                "fx_rate": fx_rate,
+                "value_usd": value_usd,
+            })
+            if value_usd is not None:
+                total_value += value_usd
 
     orders_data = []
-    for o in p.orders.all().order_by("-executed_at"):
-        total_usd = o.price_executed * o.fx_rate * o.quantity
-        orders_data.append({
-            "executed_at": o.executed_at,
-            "symbol": o.symbol,
-            "side": o.side,
-            "quantity": o.quantity,
-            "price_local": o.price_executed,
-            "currency": o.currency,
-            "fx_rate": o.fx_rate,
-            "total_value_usd": total_usd,
-        })
+    if include_details:
+        for o in p.orders.all().order_by("-executed_at"):
+            total_usd = o.price_executed * o.fx_rate * o.quantity
+            orders_data.append({
+                "executed_at": o.executed_at,
+                "symbol": o.symbol,
+                "side": o.side,
+                "quantity": o.quantity,
+                "price_local": o.price_executed,
+                "currency": o.currency,
+                "fx_rate": o.fx_rate,
+                "total_value_usd": total_usd,
+            })
 
     history_data = []
     for snap in p.snapshots.all().order_by("timestamp"):
@@ -137,9 +139,9 @@ def build_portfolio_context(p):
             })
 
     return {
-        "positions": positions,
+        "positions": positions if include_details else [],
         "total_value": total_value,
-        "orders_data": orders_data,
+        "orders_data": orders_data if include_details else [],
         "history_data": history_data,
         "benchmark_data": benchmark_data,
     }
@@ -175,6 +177,7 @@ class PortfolioDetailView(LoginRequiredMixin, DetailView):
         ctx = super().get_context_data(**kwargs)
         ctx.update(build_portfolio_context(self.object))
         ctx["is_owner"] = True
+        ctx["private_view"] = False
         return ctx
 
 
@@ -185,10 +188,13 @@ class PublicPortfolioDetailView(DetailView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx.update(build_portfolio_context(self.object))
-        ctx["is_owner"] = (
+        is_owner = (
             self.request.user.is_authenticated and self.request.user == self.object.user
         )
+        include_details = is_owner or not self.object.is_private
+        ctx.update(build_portfolio_context(self.object, include_details=include_details))
+        ctx["is_owner"] = is_owner
+        ctx["private_view"] = self.object.is_private and not is_owner
         return ctx
 
 

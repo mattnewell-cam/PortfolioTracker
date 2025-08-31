@@ -16,6 +16,7 @@ class Portfolio(models.Model):
     cash_balance = models.FloatField(default=100000.00, validators=[MinValueValidator(0)])
     holdings = JSONField(default=dict)
     benchmarks = JSONField(default=list)
+    is_private = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
