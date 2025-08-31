@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.db.models import JSONField
 from django.core.validators import MinValueValidator
+from decimal import Decimal
 
 
 User = get_user_model()
@@ -13,7 +14,12 @@ class Portfolio(models.Model):
     )
     name = models.CharField(max_length=100)
     substack_url = models.URLField(unique=True, blank=True, null=True)
-    cash_balance = models.FloatField(default=100000.00, validators=[MinValueValidator(0)])
+    cash_balance = models.DecimalField(
+        max_digits=20,
+        decimal_places=2,
+        default=Decimal("100000.00"),
+        validators=[MinValueValidator(0)],
+    )
     holdings = JSONField(default=dict)
     benchmarks = JSONField(default=list)
     is_private = models.BooleanField(default=False)
@@ -30,9 +36,9 @@ class Order(models.Model):
     symbol         = models.CharField(max_length=20)
     side           = models.CharField(max_length=4, choices=SIDE_CHOICES)
     quantity       = models.PositiveIntegerField()
-    price_executed = models.FloatField()       # local‐currency price
+    price_executed = models.DecimalField(max_digits=20, decimal_places=2)       # local‐currency price
     currency       = models.CharField(max_length=10)
-    fx_rate        = models.FloatField(default=1.0)       # FX rate at execution
+    fx_rate        = models.DecimalField(max_digits=20, decimal_places=2, default=Decimal("1.00"))       # FX rate at execution
     executed_at    = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -44,7 +50,7 @@ class PortfolioSnapshot(models.Model):
     timestamp    = models.DateTimeField(
         # auto_now_add=True  # Remove when you want to backfill
     )
-    total_value  = models.FloatField()  # USD value at this moment
+    total_value  = models.DecimalField(max_digits=20, decimal_places=2)  # USD value at this moment
 
     class Meta:
         ordering = ["timestamp"]

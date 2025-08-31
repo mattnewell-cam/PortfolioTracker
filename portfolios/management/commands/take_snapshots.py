@@ -6,6 +6,7 @@ import yfinance as yf
 
 from django.core.management.base import BaseCommand
 from django.utils import timezone
+from decimal import Decimal
 
 from portfolios.models import Portfolio, PortfolioSnapshot
 from core.yfinance_client import get_quote  # updated import
@@ -40,7 +41,7 @@ class Command(BaseCommand):
                     continue  # skip if yfinance fails
 
             # 2) Credit any dividends paid in the last 24 hours
-            total_dividend_credit = 0.0
+            total_dividend_credit = Decimal("0")
             for symbol, qty in p.holdings.items():
                 try:
                     ticker = yf.Ticker(symbol)
@@ -49,8 +50,8 @@ class Command(BaseCommand):
                         for ex_date, div_amount in div_series.items():
                             if ex_date.date() >= since_date:
                                 quote = get_quote(symbol)
-                                fx_rate = quote["fx_rate"]
-                                credit = float(div_amount) * qty * fx_rate
+                                fx_rate = Decimal(str(quote["fx_rate"]))
+                                credit = Decimal(str(div_amount)) * Decimal(str(qty)) * fx_rate
                                 total_dividend_credit += credit
                                 self.stdout.write(
                                     f"➕ Credited {symbol} dividend ${credit:.2f} to Portfolio {p.pk} "
@@ -68,9 +69,9 @@ class Command(BaseCommand):
             for symbol, qty in p.holdings.items():
                 try:
                     quote = get_quote(symbol)
-                    fx_rate = quote["fx_rate"]
-                    mid_local = quote["price"]
-                    total_value += mid_local * fx_rate * qty
+                    fx_rate = Decimal(str(quote["fx_rate"]))
+                    mid_local = Decimal(str(quote["price"]))
+                    total_value += mid_local * fx_rate * Decimal(str(qty))
                 except Exception as e:
                     self.stderr.write(f"⏱ Skipping {symbol} for Portfolio {p.pk}: {e}")
                     continue

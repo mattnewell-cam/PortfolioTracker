@@ -1,9 +1,11 @@
 from django import forms
+
 from .models import Portfolio, Order
 from .constants import BENCHMARK_CHOICES
 
 
 class PortfolioForm(forms.ModelForm):
+    cash_balance = forms.DecimalField(max_digits=20, decimal_places=2, min_value=0)
     # allow up to 3 benchmarks
     benchmarks = forms.MultipleChoiceField(
         choices=BENCHMARK_CHOICES,
