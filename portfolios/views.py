@@ -248,16 +248,9 @@ class PortfolioExploreView(ListView):
         for p in ctx["portfolios"]:
             snap = p.snapshots.order_by("-timestamp").first()
             if snap:
-                total = snap.total_value
+                p.total_value_cached = snap.total_value
             else:
-                total = p.cash_balance
-                for symbol, qty in p.holdings.items():
-                    try:
-                        quote = get_quote(symbol)
-                        total += quote["price"] * quote["fx_rate"] * qty
-                    except Exception:
-                        pass
-            p.total_value_cached = total
+                p.total_value_cached = p.cash_balance
         ctx["search_query"] = self.request.GET.get("q", "")
         return ctx
 

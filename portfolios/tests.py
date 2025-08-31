@@ -240,3 +240,14 @@ class ExplorePageTests(TestCase):
         self.assertContains(response, 'Beta Stack')
         self.assertNotContains(response, 'Alpha Stack')
 
+    def test_explore_uses_snapshot_without_fetching_quotes(self):
+        user3 = User.objects.create_user('gamma', password='pass')
+        Portfolio.objects.create(
+            user=user3,
+            name='Gamma Stack',
+            holdings={'AAPL': 5},
+        )
+        with patch('portfolios.views.get_quote') as mock_get_quote:
+            self.client.get(reverse('portfolios:portfolio-explore'))
+        mock_get_quote.assert_not_called()
+
