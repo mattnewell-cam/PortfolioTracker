@@ -28,6 +28,8 @@ urlpatterns = [
     path('accounts/login/', auth_views.LoginView.as_view(authentication_form=DisplayAuthenticationForm), name='login'),
     path('accounts/register/', views.register, name='register'),
     path('accounts/verify-substack/', views.verify_substack, name='verify-substack'),
+    path('accounts/email-verification-sent/', views.email_verification_sent, name='email-verification-sent'),
+    path('accounts/verify-email/<uidb64>/<token>/', views.verify_email, name='verify-email'),
     path('accounts/', include('django.contrib.auth.urls')),
     path('portfolios/', include(('portfolios.urls', 'portfolios'), namespace='portfolios')),
     path('', RedirectView.as_view(pattern_name='portfolios:portfolio-detail', permanent=False)),

@@ -5,7 +5,13 @@ import feedparser
 from urllib.parse import urlparse, urlunparse
 from django.contrib import messages
 from django.contrib.auth import login, get_user_model
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
 from django.shortcuts import render, redirect
+from django.urls import reverse
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.conf import settings
 
 from portfolios.models import Portfolio
 
@@ -21,6 +27,7 @@ def register(request):
             request.session["pending_user"] = {
                 "username": form.cleaned_data["username"],
                 "password1": form.cleaned_data["password1"],
+                "email": form.cleaned_data["email"],
                 "substack_url": form.cleaned_data["substack_url"],
                 "benchmarks": form.cleaned_data["benchmarks"],
                 "nonce": nonce,
@@ -71,9 +78,11 @@ def verify_substack(request):
 
                 User = get_user_model()
                 user = User.objects.create_user(
-                    pending["username"], password=pending["password1"]
+                    pending["username"],
+                    password=pending["password1"],
+                    email=pending["email"],
+                    is_active=False,
                 )
-                login(request, user)
                 Portfolio.objects.create(
                     user=user,
                     name=title or pending["substack_url"],
@@ -81,8 +90,20 @@ def verify_substack(request):
                     benchmarks=pending.get("benchmarks", []),
                     short_description=subtitle,
                 )
+
+                uid = urlsafe_base64_encode(force_bytes(user.pk))
+                token = default_token_generator.make_token(user)
+                verify_link = request.build_absolute_uri(
+                    reverse("verify-email", args=[uid, token])
+                )
+                send_mail(
+                    "Verify your email",
+                    f"Click the link to verify your email: {verify_link}",
+                    settings.DEFAULT_FROM_EMAIL,
+                    [user.email],
+                )
                 del request.session["pending_user"]
-                return redirect("portfolios:portfolio-detail")
+                return redirect("email-verification-sent")
         except requests.RequestException:
             pass
         messages.error(
@@ -95,3 +116,24 @@ def verify_substack(request):
         "registration/verify_substack.html",
         {"nonce": pending["nonce"], "substack_url": pending["substack_url"]},
     )
+
+
+def email_verification_sent(request):
+    return render(request, "registration/email_verification_sent.html")
+
+
+def verify_email(request, uidb64, token):
+    User = get_user_model()
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid)
+    except (User.DoesNotExist, ValueError, TypeError, OverflowError):
+        user = None
+
+    if user and default_token_generator.check_token(user, token):
+        user.is_active = True
+        user.save()
+        login(request, user)
+        return redirect("portfolios:portfolio-detail")
+
+    return render(request, "registration/verify_email_failed.html")

@@ -1,8 +1,12 @@
 from django.contrib.auth.models import User
+from django.core import mail
 from django.test import TestCase
 from django.urls import reverse
 from unittest.mock import Mock, patch
 from django.utils import timezone
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
+from django.contrib.auth.tokens import default_token_generator
 
 from .models import Portfolio, Order, PortfolioSnapshot
 from .constants import BENCHMARK_CHOICES
@@ -15,6 +19,7 @@ class RegistrationTests(TestCase):
             reverse('register'),
             {
                 'username': 'new user',
+                'email': 'user@example.com',
                 'password1': 'strong-pass-123',
                 'password2': 'strong-pass-123',
                 'substack_url': 'https://example.substack.com',
@@ -25,11 +30,12 @@ class RegistrationTests(TestCase):
 
     @patch('core.views.feedparser.parse')
     @patch('core.views.requests.get')
-    def test_substack_verification_creates_user(self, mock_get, mock_parse):
+    def test_substack_verification_sends_email(self, mock_get, mock_parse):
         self.client.post(
             reverse('register'),
             {
                 'username': 'new user',
+                'email': 'user@example.com',
                 'password1': 'strong-pass-123',
                 'password2': 'strong-pass-123',
                 'substack_url': 'https://example.substack.com',
@@ -43,16 +49,47 @@ class RegistrationTests(TestCase):
         mock_parse.return_value = mock_feed
 
         response = self.client.post(reverse('verify-substack'))
-        self.assertRedirects(response, reverse('portfolios:portfolio-detail'))
-        self.assertTrue(User.objects.filter(username='new user').exists())
+        self.assertRedirects(response, reverse('email-verification-sent'))
+        user = User.objects.get(username='new user')
+        self.assertFalse(user.is_active)
+        self.assertEqual(len(mail.outbox), 1)
         self.assertTrue(
             Portfolio.objects.filter(
-                user__username='new user',
+                user=user,
                 substack_url='https://example.substack.com',
                 name='Example Stack',
                 short_description='Short desc',
             ).exists()
         )
+
+    @patch('core.views.feedparser.parse')
+    @patch('core.views.requests.get')
+    def test_email_verification_activates_user(self, mock_get, mock_parse):
+        self.client.post(
+            reverse('register'),
+            {
+                'username': 'new user',
+                'email': 'user@example.com',
+                'password1': 'strong-pass-123',
+                'password2': 'strong-pass-123',
+                'substack_url': 'https://example.substack.com',
+            },
+        )
+        nonce = self.client.session['pending_user']['nonce']
+        mock_about = Mock()
+        mock_about.text = f"about page with {nonce}"
+        mock_feed = Mock(feed={'title': 'Example Stack', 'subtitle': 'Short desc'})
+        mock_get.return_value = mock_about
+        mock_parse.return_value = mock_feed
+
+        self.client.post(reverse('verify-substack'))
+        user = User.objects.get(username='new user')
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+        response = self.client.get(reverse('verify-email', args=[uid, token]))
+        self.assertRedirects(response, reverse('portfolios:portfolio-detail'))
+        user.refresh_from_db()
+        self.assertTrue(user.is_active)
 
     def test_duplicate_substack_url_not_allowed(self):
         user = User.objects.create_user('existing', password='pass')
@@ -65,6 +102,7 @@ class RegistrationTests(TestCase):
             reverse('register'),
             {
                 'username': 'new user',
+                'email': 'user@example.com',
                 'password1': 'strong-pass-123',
                 'password2': 'strong-pass-123',
                 'substack_url': 'https://example.substack.com',

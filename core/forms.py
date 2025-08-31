@@ -29,6 +29,7 @@ username_field.validators.insert(0, DISPLAY_NAME_VALIDATOR)
 
 
 class SubstackRegistrationForm(UserCreationForm):
+    email = forms.EmailField(label="Email")
     substack_url = forms.URLField(label="Substack URL")
     benchmarks = forms.MultipleChoiceField(
         choices=BENCHMARK_CHOICES,
@@ -39,7 +40,7 @@ class SubstackRegistrationForm(UserCreationForm):
 
     class Meta(UserCreationForm.Meta):
         model = get_user_model()
-        fields = UserCreationForm.Meta.fields + ("substack_url",)
+        fields = UserCreationForm.Meta.fields + ("email", "substack_url")
         field_classes = {
             **UserCreationForm.Meta.field_classes,
             "username": DisplayNameField,
