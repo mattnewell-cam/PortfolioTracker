@@ -15,7 +15,7 @@ from .models import Portfolio, Order, PortfolioSnapshot
 from .constants import BENCHMARK_CHOICES
 from .forms import PortfolioForm, OrderForm
 import yfinance as yf
-from .forms import PortfolioForm, OrderForm, PortfolioLookupForm
+from .forms import PortfolioForm, OrderForm
 import json
 
 
