@@ -66,3 +66,38 @@ class RegistrationTests(TestCase):
         self.assertContains(response, 'already linked')
         self.assertFalse(User.objects.filter(username='newuser').exists())
         self.assertNotIn('pending_user', self.client.session)
+
+
+class PublicPortfolioTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user('owner', password='pass')
+        self.portfolio = Portfolio.objects.create(
+            user=self.owner,
+            name='Owner Portfolio',
+            substack_url='https://owner.substack.com',
+        )
+
+    def test_lookup_redirects_to_public_detail(self):
+        response = self.client.post(
+            reverse('portfolios:portfolio-lookup'),
+            {'substack_url': 'https://owner.substack.com'}
+        )
+        self.assertRedirects(
+            response,
+            reverse('portfolios:portfolio-public-detail', args=[self.portfolio.pk])
+        )
+
+    def test_public_detail_hides_order_link_for_non_owner(self):
+        response = self.client.get(
+            reverse('portfolios:portfolio-public-detail', args=[self.portfolio.pk])
+        )
+        self.assertContains(response, 'Owner Portfolio')
+        self.assertNotContains(response, 'Place Buy/Sell Order')
+
+    def test_lookup_invalid_shows_error(self):
+        response = self.client.post(
+            reverse('portfolios:portfolio-lookup'),
+            {'substack_url': 'https://unknown.substack.com'}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'No portfolio found')

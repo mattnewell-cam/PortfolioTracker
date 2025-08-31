@@ -30,3 +30,13 @@ class OrderForm(forms.ModelForm):
         widgets = {
             "side": forms.Select(choices=Order.SIDE_CHOICES),
         }
+
+
+class PortfolioLookupForm(forms.Form):
+    """Form for looking up a portfolio by its Substack URL."""
+
+    substack_url = forms.URLField(label="Substack URL")
+
+    def clean_substack_url(self):
+        """Normalize the URL by removing any trailing slash."""
+        return self.cleaned_data["substack_url"].rstrip("/")
