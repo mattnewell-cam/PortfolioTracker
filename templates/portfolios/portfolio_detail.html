@@ -5,6 +5,19 @@
 {% block content %}
   <h1 class="mb-4">{{ portfolio.name }}</h1>
 
+  {% if is_owner %}
+    <form method="post" action="{% url 'portfolios:portfolio-toggle-privacy' %}" class="mb-3">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-secondary">
+        {% if portfolio.is_private %}
+          Make Portfolio Public
+        {% else %}
+          Make Portfolio Private
+        {% endif %}
+      </button>
+    </form>
+  {% endif %}
+
   {% if private_view %}
     <p class="text-muted"><em>This portfolio is private. Only the value chart is visible.</em></p>
   {% endif %}

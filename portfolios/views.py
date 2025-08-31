@@ -4,6 +4,7 @@ from django.http import JsonResponse
 from django.urls import reverse_lazy
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from django.views.generic import DetailView, CreateView, FormView
 from bisect import bisect_right
 from django.utils import timezone
@@ -196,6 +197,16 @@ class PublicPortfolioDetailView(DetailView):
         ctx["is_owner"] = is_owner
         ctx["private_view"] = self.object.is_private and not is_owner
         return ctx
+
+
+@require_POST
+@login_required
+def toggle_privacy(request):
+    """Toggle the current user's portfolio privacy flag."""
+    portfolio = get_object_or_404(Portfolio, user=request.user)
+    portfolio.is_private = not portfolio.is_private
+    portfolio.save()
+    return redirect("portfolios:portfolio-detail")
 
 
 class PortfolioLookupView(FormView):

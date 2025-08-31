@@ -134,3 +134,34 @@ class PrivatePortfolioTests(TestCase):
         self.assertNotContains(response, 'Order History')
         self.assertEqual(response.context['positions'], [])
         self.assertEqual(response.context['orders_data'], [])
+
+
+class PortfolioPrivacyToggleTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user('owner', password='pass')
+        self.portfolio = Portfolio.objects.create(
+            user=self.user,
+            name='Toggle Portfolio',
+            substack_url='https://toggle.substack.com',
+            is_private=False,
+        )
+
+    def test_toggle_button_visible_to_owner(self):
+        self.client.login(username='owner', password='pass')
+        response = self.client.get(reverse('portfolios:portfolio-detail'))
+        self.assertContains(response, 'Make Portfolio Private')
+
+    def test_toggle_changes_privacy(self):
+        self.client.login(username='owner', password='pass')
+        response = self.client.post(reverse('portfolios:portfolio-toggle-privacy'))
+        self.assertRedirects(response, reverse('portfolios:portfolio-detail'))
+        self.portfolio.refresh_from_db()
+        self.assertTrue(self.portfolio.is_private)
+
+    def test_toggle_button_hidden_from_public_view(self):
+        other = User.objects.create_user('viewer', password='pass')
+        self.client.login(username='viewer', password='pass')
+        response = self.client.get(
+            reverse('portfolios:portfolio-public-detail', args=[self.portfolio.pk])
+        )
+        self.assertNotContains(response, 'Make Portfolio')
