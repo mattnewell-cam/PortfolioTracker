@@ -1,6 +1,7 @@
 import secrets
 
 import requests
+from urllib.parse import urlparse, urlunparse
 from django.contrib import messages
 from django.contrib.auth import login, get_user_model
 from django.shortcuts import render, redirect
@@ -44,7 +45,15 @@ def verify_substack(request):
             del request.session["pending_user"]
             return redirect("register")
 
-        substack_about = pending["substack_url"].rstrip("/") + "/about"
+        parsed_url = urlparse(pending["substack_url"])
+        host = parsed_url.hostname or ""
+        if host != "substack.com" and not host.endswith(".substack.com"):
+            messages.error(request, "Invalid Substack URL.")
+            del request.session["pending_user"]
+            return redirect("register")
+        substack_about = urlunparse(
+            parsed_url._replace(path="/about", params="", query="", fragment="")
+        )
         try:
             resp = requests.get(substack_about, timeout=5)
             if pending["nonce"] in resp.text:

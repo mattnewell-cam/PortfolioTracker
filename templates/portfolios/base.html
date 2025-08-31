@@ -47,9 +47,6 @@
           </li>
           {% if user.is_authenticated %}
             <li class="nav-item">
-              <span class="nav-link">Hello, {{ user.username }}!</span>
-            </li>
-            <li class="nav-item">
               <form method="post" action="{% url 'logout' %}" class="d-inline">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-outline-secondary ms-2">
