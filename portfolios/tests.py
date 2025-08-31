@@ -18,6 +18,7 @@ class RegistrationTests(TestCase):
                 'username': 'newuser',
                 'password1': 'strong-pass-123',
                 'password2': 'strong-pass-123',
+                'substack_name': 'Example Stack',
                 'substack_url': 'https://example.substack.com',
             },
         )
@@ -32,6 +33,7 @@ class RegistrationTests(TestCase):
                 'username': 'newuser',
                 'password1': 'strong-pass-123',
                 'password2': 'strong-pass-123',
+                'substack_name': 'Example Stack',
                 'substack_url': 'https://example.substack.com',
             },
         )
@@ -47,6 +49,7 @@ class RegistrationTests(TestCase):
             Portfolio.objects.filter(
                 user__username='newuser',
                 substack_url='https://example.substack.com',
+                name='Example Stack',
             ).exists()
         )
 
@@ -54,7 +57,7 @@ class RegistrationTests(TestCase):
         user = User.objects.create_user('existing', password='pass')
         Portfolio.objects.create(
             user=user,
-            name='My Portfolio',
+            name='Existing Portfolio',
             substack_url='https://example.substack.com',
         )
         response = self.client.post(
@@ -63,6 +66,7 @@ class RegistrationTests(TestCase):
                 'username': 'newuser',
                 'password1': 'strong-pass-123',
                 'password2': 'strong-pass-123',
+                'substack_name': 'Example Stack',
                 'substack_url': 'https://example.substack.com',
             },
         )
@@ -226,13 +230,13 @@ class ExplorePageTests(TestCase):
             total_value=2000,
         )
 
-    def test_explore_shows_only_public_portfolios(self):
+    def test_explore_lists_all_portfolios(self):
         response = self.client.get(reverse('portfolios:portfolio-explore'))
         self.assertContains(response, 'Alpha Stack')
-        self.assertNotContains(response, 'Beta Stack')
+        self.assertContains(response, 'Beta Stack')
 
     def test_search_filters_portfolios(self):
-        response = self.client.get(reverse('portfolios:portfolio-explore'), {'q': 'alpha'})
-        self.assertContains(response, 'Alpha Stack')
-        self.assertNotContains(response, 'Beta Stack')
+        response = self.client.get(reverse('portfolios:portfolio-explore'), {'q': 'beta'})
+        self.assertContains(response, 'Beta Stack')
+        self.assertNotContains(response, 'Alpha Stack')
 

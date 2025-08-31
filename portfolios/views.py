@@ -237,7 +237,7 @@ class PortfolioExploreView(ListView):
     context_object_name = "portfolios"
 
     def get_queryset(self):
-        qs = Portfolio.objects.filter(is_private=False)
+        qs = Portfolio.objects.all()
         query = self.request.GET.get("q")
         if query:
             qs = qs.filter(Q(name__icontains=query) | Q(substack_url__icontains=query))
