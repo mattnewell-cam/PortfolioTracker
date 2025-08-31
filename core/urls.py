@@ -17,12 +17,15 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import RedirectView
+from django.contrib.auth import views as auth_views
 
 from . import views
+from .forms import DisplayAuthenticationForm
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('accounts/login/', auth_views.LoginView.as_view(authentication_form=DisplayAuthenticationForm), name='login'),
     path('accounts/register/', views.register, name='register'),
     path('accounts/verify-substack/', views.verify_substack, name='verify-substack'),
     path('accounts/', include('django.contrib.auth.urls')),

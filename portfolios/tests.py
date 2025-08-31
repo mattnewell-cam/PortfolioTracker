@@ -14,14 +14,14 @@ class RegistrationTests(TestCase):
         response = self.client.post(
             reverse('register'),
             {
-                'username': 'newuser',
+                'username': 'new user',
                 'password1': 'strong-pass-123',
                 'password2': 'strong-pass-123',
                 'substack_url': 'https://example.substack.com',
             },
         )
         self.assertRedirects(response, reverse('verify-substack'))
-        self.assertFalse(User.objects.filter(username='newuser').exists())
+        self.assertFalse(User.objects.filter(username='new user').exists())
 
     @patch('core.views.feedparser.parse')
     @patch('core.views.requests.get')
@@ -29,7 +29,7 @@ class RegistrationTests(TestCase):
         self.client.post(
             reverse('register'),
             {
-                'username': 'newuser',
+                'username': 'new user',
                 'password1': 'strong-pass-123',
                 'password2': 'strong-pass-123',
                 'substack_url': 'https://example.substack.com',
@@ -44,10 +44,10 @@ class RegistrationTests(TestCase):
 
         response = self.client.post(reverse('verify-substack'))
         self.assertRedirects(response, reverse('portfolios:portfolio-detail'))
-        self.assertTrue(User.objects.filter(username='newuser').exists())
+        self.assertTrue(User.objects.filter(username='new user').exists())
         self.assertTrue(
             Portfolio.objects.filter(
-                user__username='newuser',
+                user__username='new user',
                 substack_url='https://example.substack.com',
                 name='Example Stack',
                 short_description='Short desc',
@@ -64,7 +64,7 @@ class RegistrationTests(TestCase):
         response = self.client.post(
             reverse('register'),
             {
-                'username': 'newuser',
+                'username': 'new user',
                 'password1': 'strong-pass-123',
                 'password2': 'strong-pass-123',
                 'substack_url': 'https://example.substack.com',
@@ -72,7 +72,7 @@ class RegistrationTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'already linked')
-        self.assertFalse(User.objects.filter(username='newuser').exists())
+        self.assertFalse(User.objects.filter(username='new user').exists())
         self.assertNotIn('pending_user', self.client.session)
 
 
