@@ -5,7 +5,7 @@ from django.urls import reverse_lazy
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
-from django.views.generic import DetailView, CreateView, FormView, ListView
+from django.views.generic import DetailView, CreateView, ListView
 from django.db.models import Q
 from django.core.serializers.json import DjangoJSONEncoder
 from bisect import bisect_right
@@ -15,7 +15,7 @@ from decimal import Decimal
 from core.yfinance_client import get_quote
 from .models import Portfolio, Order, PortfolioSnapshot
 from .constants import BENCHMARK_CHOICES
-from .forms import PortfolioForm, OrderForm, PortfolioLookupForm
+from .forms import PortfolioForm, OrderForm
 import yfinance as yf
 import json
 
@@ -222,19 +222,6 @@ def toggle_privacy(request):
     portfolio.is_private = not portfolio.is_private
     portfolio.save()
     return redirect("portfolios:portfolio-detail")
-
-
-class PortfolioLookupView(FormView):
-    form_class = PortfolioLookupForm
-    template_name = "portfolios/portfolio_lookup.html"
-
-    def form_valid(self, form):
-        url = form.cleaned_data["substack_url"]
-        portfolio = Portfolio.objects.filter(substack_url=url).first()
-        if not portfolio:
-            form.add_error("substack_url", "No portfolio found for that Substack URL.")
-            return self.form_invalid(form)
-        return redirect("portfolios:portfolio-public-detail", pk=portfolio.pk)
 
 
 class PortfolioExploreView(ListView):
