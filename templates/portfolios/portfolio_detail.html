@@ -192,7 +192,7 @@
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       // 1) Prepare the portfolio dataset
-      const historyData = {{ history_data|safe }};
+      const historyData = {{ history_data_json|safe }};
       const labels = historyData.map(pt => pt.date);
       const portfolioValues = historyData.map(pt => pt.value);
 
@@ -206,7 +206,7 @@
       }];
 
         // 2) Add one dataset per benchmark
-        const benchmarkData = {{ benchmark_data|safe }};
+        const benchmarkData = {{ benchmark_data_json|safe }};
         const defaultBenchmarks = {{ default_benchmarks|safe }};
         benchmarkData.forEach((bm, idx) => {
           const priceMap = {};

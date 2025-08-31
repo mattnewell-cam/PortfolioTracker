@@ -7,6 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.views.generic import DetailView, CreateView, FormView, ListView
 from django.db.models import Q
+from django.core.serializers.json import DjangoJSONEncoder
 from bisect import bisect_right
 from django.utils import timezone
 from decimal import Decimal
@@ -16,6 +17,7 @@ from .models import Portfolio, Order, PortfolioSnapshot
 from .constants import BENCHMARK_CHOICES
 from .forms import PortfolioForm, OrderForm, PortfolioLookupForm
 import yfinance as yf
+import json
 
 
 def build_portfolio_context(p, include_details=True):
@@ -154,7 +156,9 @@ def build_portfolio_context(p, include_details=True):
         "total_value": total_value,
         "orders_data": orders_data if include_details else [],
         "history_data": history_data,
+        "history_data_json": json.dumps(history_data, cls=DjangoJSONEncoder),
         "benchmark_data": benchmark_data,
+        "benchmark_data_json": json.dumps(benchmark_data, cls=DjangoJSONEncoder),
         "default_benchmarks": p.benchmarks,
     }
 
