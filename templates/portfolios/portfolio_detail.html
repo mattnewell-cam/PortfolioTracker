@@ -197,13 +197,13 @@
 
 {% block extra_scripts %}
   <!-- Chart.js (same as before) -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       // 1) Prepare the portfolio dataset
       const historyData = {{ history_data_json|safe }};
       const labels = historyData.map(pt => pt.date);
-      const portfolioValues = historyData.map(pt => pt.value);
+      const portfolioValues = historyData.map(pt => Number(pt.value));
 
       const colorPool = [
         { border: "rgba(0,123,255,1)", background: "rgba(0,123,255,0.2)" },
@@ -225,8 +225,10 @@
       const benchmarkData = {{ benchmark_data_json|safe }};
       benchmarkData.forEach((bm) => {
         const priceMap = {};
-        bm.data.forEach(pt => priceMap[pt.date] = pt.price_usd);
-        const bmPrices = labels.map(date => priceMap[date] ?? null);
+        bm.data.forEach(pt => (priceMap[pt.date] = pt.price_usd));
+        const bmPrices = labels.map(date =>
+          priceMap[date] !== undefined ? Number(priceMap[date]) : null
+        );
 
         datasets.push({
           label: bm.label,
@@ -289,7 +291,7 @@
         } else {
           ds.hidden = true;
           if (ds._assignedColor) {
-            availableColors.push(ds._assignedColor);
+            availableColors.unshift(ds._assignedColor);
             ds._assignedColor = null;
           }
         }
