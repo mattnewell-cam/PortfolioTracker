@@ -348,6 +348,7 @@
       function handleBenchmarkToggle(checkbox) {
         const idx = parseInt(checkbox.dataset.index, 10) + 1;
         const ds = historyChart.data.datasets[idx];
+        const meta = historyChart.getDatasetMeta(idx);
         if (checkbox.checked) {
           if (activeCount() >= 3) {
             checkbox.checked = false;
@@ -363,9 +364,11 @@
           ds.backgroundColor = color.background;
           ds.borderWidth = 2;
           ds.hidden = false;
+          meta.hidden = null;
           ds._assignedColor = color;
         } else {
           ds.hidden = true;
+          meta.hidden = true;
           if (ds._assignedColor) {
             availableColors.unshift(ds._assignedColor);
             ds._assignedColor = null;
