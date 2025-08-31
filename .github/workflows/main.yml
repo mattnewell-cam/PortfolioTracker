@@ -8,6 +8,10 @@ on:
 jobs:
   take-snapshots:
     runs-on: ubuntu-latest
+    env:
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      DEBUG: 'False'
+      ALLOWED_HOSTS: '127.0.0.1,localhost'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
