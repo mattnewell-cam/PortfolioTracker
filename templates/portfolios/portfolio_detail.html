@@ -107,6 +107,17 @@
 
   <!-- Value Over Time -->
   <h2 class="h5 mb-3">Value Over Time</h2>
+  <div class="mb-2">
+    <div class="btn-group btn-group-sm" role="group" id="rangeButtons">
+      <button type="button" class="btn btn-outline-primary active" data-range="max">Max</button>
+      <button type="button" class="btn btn-outline-primary" data-range="5y">5Y</button>
+      <button type="button" class="btn btn-outline-primary" data-range="1y">1Y</button>
+      <button type="button" class="btn btn-outline-primary" data-range="ytd">YTD</button>
+      <button type="button" class="btn btn-outline-primary" data-range="6m">6M</button>
+      <button type="button" class="btn btn-outline-primary" data-range="1m">1M</button>
+    </div>
+  </div>
+  <p id="returnSummary" class="mb-2 small"></p>
   <div class="mb-4">
     <canvas id="historyChart" style="max-width:100%; height:auto;"></canvas>
   </div>
@@ -196,14 +207,21 @@
 {% endblock %}
 
 {% block extra_scripts %}
-  <!-- Chart.js (same as before) -->
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script>
     document.addEventListener("DOMContentLoaded", () => {
-      // 1) Prepare the portfolio dataset
+      // ===== Prepare full data arrays =====
       const historyData = {{ history_data_json|safe }};
-      const labels = historyData.map(pt => pt.date);
-      const portfolioValues = historyData.map(pt => Number(pt.value));
+      const fullLabels = historyData.map(pt => pt.date);
+      const fullPortfolioValues = historyData.map(pt => Number(pt.value));
+
+      const benchmarkData = {{ benchmark_data_json|safe }};
+      const fullBenchmarkValues = benchmarkData.map(bm => {
+        const map = {};
+        bm.data.forEach(pt => (map[pt.date] = Number(pt.price_usd)));
+        return fullLabels.map(date => (map[date] !== undefined ? map[date] : null));
+      });
 
       const colorPool = [
         { border: "rgba(0,123,255,1)", background: "rgba(0,123,255,0.2)" },
@@ -214,25 +232,17 @@
 
       const datasets = [{
         label: "Portfolio",
-        data: portfolioValues,
+        data: [...fullPortfolioValues],
         borderColor: "#000",
         backgroundColor: "rgba(0,0,0,0.1)",
         borderWidth: 3,
         fill: false
       }];
 
-      // 2) Add one dataset per benchmark (hidden by default)
-      const benchmarkData = {{ benchmark_data_json|safe }};
-      benchmarkData.forEach((bm) => {
-        const priceMap = {};
-        bm.data.forEach(pt => (priceMap[pt.date] = pt.price_usd));
-        const bmPrices = labels.map(date =>
-          priceMap[date] !== undefined ? Number(priceMap[date]) : null
-        );
-
+      benchmarkData.forEach((bm, idx) => {
         datasets.push({
           label: bm.label,
-          data: bmPrices,
+          data: [...fullBenchmarkValues[idx]],
           borderColor: "",
           backgroundColor: "",
           borderWidth: 2,
@@ -241,15 +251,15 @@
         });
       });
 
-      // 3) Instantiate Chart.js
+      // ===== Instantiate Chart.js =====
       const ctx = document.getElementById("historyChart").getContext("2d");
       const historyChart = new Chart(ctx, {
         type: "line",
-        data: { labels: labels, datasets: datasets },
+        data: { labels: [...fullLabels], datasets: datasets },
         options: {
           scales: {
             x: { display: true, title: { display: true, text: "Date" } },
-            y: { display: true, title: { display: true, text: "Value (USD)" }, ticks: {precision: 0} }
+            y: { display: true, title: { display: true, text: "Value (USD)" }, ticks: { precision: 0 } }
           },
           interaction: {
             mode: 'index',
@@ -258,15 +268,13 @@
           plugins: {
             legend: {
               labels: {
-                // v4 signature: (legendItem, data)
                 filter: (item, data) => {
                   const ds = data?.datasets?.[item.datasetIndex];
-                  return ds ? !ds.hidden : true;   // hide legend entries for hidden datasets
-      }
-    }
-  }
-}
-
+                  return ds ? !ds.hidden : true;
+                }
+              }
+            }
+          }
         }
       });
 
@@ -274,9 +282,73 @@
         return historyChart.data.datasets.slice(1).filter(ds => !ds.hidden).length;
       }
 
+      function computeReturn(arr) {
+        const first = arr.find(v => v !== null && v !== undefined);
+        const last = [...arr].reverse().find(v => v !== null && v !== undefined);
+        if (first === undefined || last === undefined || first === 0) return null;
+        return ((last - first) / first) * 100;
+      }
+
+      function updateReturnSummary() {
+        const summaryEl = document.getElementById("returnSummary");
+        const parts = [];
+        const pReturn = computeReturn(historyChart.data.datasets[0].data);
+        if (pReturn !== null) parts.push(`Portfolio: ${pReturn.toFixed(2)}%`);
+        historyChart.data.datasets.slice(1).forEach(ds => {
+          if (!ds.hidden) {
+            const r = computeReturn(ds.data);
+            if (r !== null) parts.push(`${ds.label}: ${r.toFixed(2)}%`);
+          }
+        });
+        summaryEl.textContent = parts.join(" | ");
+      }
+
+      function applyRange(range) {
+        const earliest = new Date(fullLabels[0]);
+        const latest = new Date(fullLabels[fullLabels.length - 1]);
+        let start;
+        switch (range) {
+          case "1m":
+            start = new Date(latest);
+            start.setMonth(start.getMonth() - 1);
+            break;
+          case "6m":
+            start = new Date(latest);
+            start.setMonth(start.getMonth() - 6);
+            break;
+          case "1y":
+            start = new Date(latest);
+            start.setFullYear(start.getFullYear() - 1);
+            break;
+          case "5y":
+            start = new Date(latest);
+            start.setFullYear(start.getFullYear() - 5);
+            break;
+          case "ytd":
+            start = new Date(latest.getFullYear(), 0, 1);
+            break;
+          default:
+            start = new Date(earliest);
+        }
+        if (start < earliest) start = earliest;
+        const startIndex = fullLabels.findIndex(d => new Date(d) >= start);
+        const sliceStart = startIndex === -1 ? 0 : startIndex;
+        historyChart.data.labels = fullLabels.slice(sliceStart);
+        historyChart.data.datasets.forEach((ds, idx) => {
+          if (idx === 0) {
+            ds.data = fullPortfolioValues.slice(sliceStart);
+          } else {
+            ds.data = fullBenchmarkValues[idx - 1].slice(sliceStart);
+          }
+        });
+        historyChart.update();
+        updateReturnSummary();
+      }
+
       function handleBenchmarkToggle(checkbox) {
         const idx = parseInt(checkbox.dataset.index, 10) + 1;
         const ds = historyChart.data.datasets[idx];
+        const meta = historyChart.getDatasetMeta(idx);
         if (checkbox.checked) {
           if (activeCount() >= 3) {
             checkbox.checked = false;
@@ -292,24 +364,40 @@
           ds.backgroundColor = color.background;
           ds.borderWidth = 2;
           ds.hidden = false;
+          meta.hidden = null;
           ds._assignedColor = color;
         } else {
           ds.hidden = true;
+          meta.hidden = true;
           if (ds._assignedColor) {
             availableColors.unshift(ds._assignedColor);
             ds._assignedColor = null;
           }
         }
         historyChart.update();
+        updateReturnSummary();
       }
 
-      // Initialize and bind events
+      // Initialize benchmark checkboxes
       document.querySelectorAll(".benchmark-option").forEach(checkbox => {
         if (checkbox.checked) {
           handleBenchmarkToggle(checkbox);
         }
         checkbox.addEventListener("change", () => handleBenchmarkToggle(checkbox));
       });
+
+      // Initialize range buttons
+      const rangeButtons = document.querySelectorAll("#rangeButtons button");
+      rangeButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+          rangeButtons.forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          applyRange(btn.dataset.range);
+        });
+      });
+
+      // Initial summary
+      updateReturnSummary();
     });
   </script>
 {% endblock %}
