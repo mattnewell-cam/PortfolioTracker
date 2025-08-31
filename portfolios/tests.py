@@ -18,7 +18,6 @@ class RegistrationTests(TestCase):
                 'username': 'newuser',
                 'password1': 'strong-pass-123',
                 'password2': 'strong-pass-123',
-                'substack_name': 'Example Stack',
                 'substack_url': 'https://example.substack.com',
             },
         )
@@ -33,14 +32,15 @@ class RegistrationTests(TestCase):
                 'username': 'newuser',
                 'password1': 'strong-pass-123',
                 'password2': 'strong-pass-123',
-                'substack_name': 'Example Stack',
                 'substack_url': 'https://example.substack.com',
             },
         )
         nonce = self.client.session['pending_user']['nonce']
-        mock_resp = Mock()
-        mock_resp.text = f"about page with {nonce}"
-        mock_get.return_value = mock_resp
+        mock_about = Mock()
+        mock_about.text = f"about page with {nonce}"
+        mock_feed = Mock()
+        mock_feed.content = b"<rss><channel><title>Example Stack</title><subtitle>Short desc</subtitle></channel></rss>"
+        mock_get.side_effect = [mock_about, mock_feed]
 
         response = self.client.post(reverse('verify-substack'))
         self.assertRedirects(response, reverse('portfolios:portfolio-detail'))
@@ -50,6 +50,7 @@ class RegistrationTests(TestCase):
                 user__username='newuser',
                 substack_url='https://example.substack.com',
                 name='Example Stack',
+                short_description='Short desc',
             ).exists()
         )
 
@@ -66,7 +67,6 @@ class RegistrationTests(TestCase):
                 'username': 'newuser',
                 'password1': 'strong-pass-123',
                 'password2': 'strong-pass-123',
-                'substack_name': 'Example Stack',
                 'substack_url': 'https://example.substack.com',
             },
         )

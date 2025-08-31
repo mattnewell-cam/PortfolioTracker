@@ -5,6 +5,7 @@ from urllib.parse import urlparse, urlunparse
 from django.contrib import messages
 from django.contrib.auth import login, get_user_model
 from django.shortcuts import render, redirect
+import xml.etree.ElementTree as ET
 
 from portfolios.models import Portfolio
 
@@ -20,7 +21,6 @@ def register(request):
             request.session["pending_user"] = {
                 "username": form.cleaned_data["username"],
                 "password1": form.cleaned_data["password1"],
-                "substack_name": form.cleaned_data["substack_name"],
                 "substack_url": form.cleaned_data["substack_url"],
                 "benchmarks": form.cleaned_data["benchmarks"],
                 "nonce": nonce,
@@ -57,6 +57,21 @@ def verify_substack(request):
         try:
             resp = requests.get(substack_about, timeout=5)
             if pending["nonce"] in resp.text:
+                feed_url = urlunparse(
+                    parsed_url._replace(path="/feed", params="", query="", fragment="")
+                )
+                title = ""
+                subtitle = ""
+                try:
+                    feed_resp = requests.get(feed_url, timeout=5)
+                    root = ET.fromstring(feed_resp.content)
+                    channel = root.find("channel")
+                    if channel is not None:
+                        title = channel.findtext("title") or ""
+                        subtitle = channel.findtext("subtitle") or ""
+                except (requests.RequestException, ET.ParseError):
+                    pass
+
                 User = get_user_model()
                 user = User.objects.create_user(
                     pending["username"], password=pending["password1"]
@@ -64,9 +79,10 @@ def verify_substack(request):
                 login(request, user)
                 Portfolio.objects.create(
                     user=user,
-                    name=pending["substack_name"],
+                    name=title or pending["substack_url"],
                     substack_url=pending["substack_url"],
                     benchmarks=pending.get("benchmarks", []),
+                    short_description=subtitle,
                 )
                 del request.session["pending_user"]
                 return redirect("portfolios:portfolio-detail")

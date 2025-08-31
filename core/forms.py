@@ -7,7 +7,6 @@ from portfolios.constants import BENCHMARK_CHOICES
 
 
 class SubstackRegistrationForm(UserCreationForm):
-    substack_name = forms.CharField(label="Substack Name")
     substack_url = forms.URLField(label="Substack URL")
     benchmarks = forms.MultipleChoiceField(
         choices=BENCHMARK_CHOICES,
@@ -18,7 +17,7 @@ class SubstackRegistrationForm(UserCreationForm):
 
     class Meta(UserCreationForm.Meta):
         model = get_user_model()
-        fields = UserCreationForm.Meta.fields + ("substack_name", "substack_url")
+        fields = UserCreationForm.Meta.fields + ("substack_url",)
 
     def clean_substack_url(self):
         url = self.cleaned_data["substack_url"].rstrip("/")
