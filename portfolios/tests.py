@@ -198,3 +198,41 @@ class BenchmarkContextTests(TestCase):
         self.assertEqual(ctx['default_benchmarks'], portfolio.benchmarks)
         self.assertEqual(len(ctx['benchmark_data']), len(BENCHMARK_CHOICES))
 
+
+class ExplorePageTests(TestCase):
+    def setUp(self):
+        user1 = User.objects.create_user('alpha', password='pass')
+        user2 = User.objects.create_user('beta', password='pass')
+        self.port1 = Portfolio.objects.create(
+            user=user1,
+            name='Alpha Stack',
+            substack_url='https://alpha.substack.com',
+            is_private=False,
+        )
+        self.port2 = Portfolio.objects.create(
+            user=user2,
+            name='Beta Stack',
+            substack_url='https://beta.substack.com',
+            is_private=True,
+        )
+        PortfolioSnapshot.objects.create(
+            portfolio=self.port1,
+            timestamp=timezone.now(),
+            total_value=1000,
+        )
+        PortfolioSnapshot.objects.create(
+            portfolio=self.port2,
+            timestamp=timezone.now(),
+            total_value=2000,
+        )
+
+    def test_explore_shows_only_public_portfolios(self):
+        response = self.client.get(reverse('portfolios:portfolio-explore'))
+        self.assertContains(response, 'Alpha Stack')
+        self.assertNotContains(response, 'Beta Stack')
+
+    def test_search_filters_portfolios(self):
+        response = self.client.get(reverse('portfolios:portfolio-explore'), {'q': 'alpha'})
+        self.assertContains(response, 'Alpha Stack')
+        self.assertNotContains(response, 'Beta Stack')
+
