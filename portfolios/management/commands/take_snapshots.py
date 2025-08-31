@@ -9,6 +9,7 @@ from django.utils import timezone
 from decimal import Decimal
 
 from portfolios.models import Portfolio, PortfolioSnapshot
+from portfolios.benchmarks import get_benchmark_prices_usd
 from core.yfinance_client import get_quote  # updated import
 
 
@@ -19,6 +20,7 @@ class Command(BaseCommand):
         now = timezone.now()
         since_date = (now - timedelta(days=1)).date()  # look back 24h
         portfolios = Portfolio.objects.all()
+        benchmark_prices = get_benchmark_prices_usd(now.date())
 
         for p in portfolios:
             # 1) Adjust holdings for any splits in the last 24 hours
@@ -76,11 +78,12 @@ class Command(BaseCommand):
                     self.stderr.write(f"⏱ Skipping {symbol} for Portfolio {p.pk}: {e}")
                     continue
 
-            # 4) Create the snapshot record
+            # 4) Create the snapshot record including benchmark values
             PortfolioSnapshot.objects.create(
                 portfolio=p,
                 timestamp=now,
-                total_value=total_value
+                total_value=total_value,
+                benchmark_values=benchmark_prices,
             )
             self.stdout.write(f"✔ Snapshot: Portfolio {p.pk} = ${total_value:.2f} at {now}")
 
