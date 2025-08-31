@@ -9,5 +9,6 @@ urlpatterns = [
     path("public/<int:pk>/", views.PublicPortfolioDetailView.as_view(), name="portfolio-public-detail"),
     path("create/", views.PortfolioCreateView.as_view(), name="portfolio-create"),
     path("order/", views.OrderCreateView.as_view(), name="order-create"),
+    path("toggle-privacy/", views.toggle_privacy, name="portfolio-toggle-privacy"),
     path("history/", views.portfolio_history, name="portfolio-history"),
 ]

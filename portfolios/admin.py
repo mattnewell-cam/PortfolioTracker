@@ -3,7 +3,7 @@ from .models import Portfolio, Order
 
 @admin.register(Portfolio)
 class PortfolioAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "name", "cash_balance", "created_at")
+    list_display = ("id", "user", "name", "cash_balance", "is_private", "created_at")
     list_filter = ("user",)
     search_fields = ("name", "user__username")
 

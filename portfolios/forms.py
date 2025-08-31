@@ -14,7 +14,7 @@ class PortfolioForm(forms.ModelForm):
 
     class Meta:
         model = Portfolio
-        fields = ["name", "cash_balance", "benchmarks"]
+        fields = ["name", "cash_balance", "benchmarks", "is_private"]
 
     def clean_benchmarks(self):
         selected = self.cleaned_data.get("benchmarks", [])
