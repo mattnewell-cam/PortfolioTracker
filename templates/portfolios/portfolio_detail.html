@@ -3,7 +3,12 @@
 {% block title %}{{ portfolio.name }}{% endblock %}
 
 {% block content %}
-  <h1 class="mb-4">{{ portfolio.name }}</h1>
+  <h1 class="mb-1">{{ portfolio.name }}</h1>
+  {% if portfolio.short_description %}
+    <p class="text-muted mb-4">{{ portfolio.short_description }}</p>
+  {% else %}
+    <div class="mb-4"></div>
+  {% endif %}
 
   {% if is_owner %}
     <form method="post" action="{% url 'portfolios:portfolio-toggle-privacy' %}" class="mb-3">

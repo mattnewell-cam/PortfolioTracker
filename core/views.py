@@ -1,6 +1,7 @@
 import secrets
 
 import requests
+import feedparser
 from urllib.parse import urlparse, urlunparse
 from django.contrib import messages
 from django.contrib.auth import login, get_user_model
@@ -20,7 +21,6 @@ def register(request):
             request.session["pending_user"] = {
                 "username": form.cleaned_data["username"],
                 "password1": form.cleaned_data["password1"],
-                "substack_name": form.cleaned_data["substack_name"],
                 "substack_url": form.cleaned_data["substack_url"],
                 "benchmarks": form.cleaned_data["benchmarks"],
                 "nonce": nonce,
@@ -57,6 +57,18 @@ def verify_substack(request):
         try:
             resp = requests.get(substack_about, timeout=5)
             if pending["nonce"] in resp.text:
+                feed_url = urlunparse(
+                    parsed_url._replace(path="/feed", params="", query="", fragment="")
+                )
+                title = ""
+                subtitle = ""
+                try:
+                    feed = feedparser.parse(feed_url)
+                    title = feed.feed.get("title", "")
+                    subtitle = feed.feed.get("subtitle") or feed.feed.get("description") or ""
+                except Exception:
+                    pass
+
                 User = get_user_model()
                 user = User.objects.create_user(
                     pending["username"], password=pending["password1"]
@@ -64,9 +76,10 @@ def verify_substack(request):
                 login(request, user)
                 Portfolio.objects.create(
                     user=user,
-                    name=pending["substack_name"],
+                    name=title or pending["substack_url"],
                     substack_url=pending["substack_url"],
                     benchmarks=pending.get("benchmarks", []),
+                    short_description=subtitle,
                 )
                 del request.session["pending_user"]
                 return redirect("portfolios:portfolio-detail")
