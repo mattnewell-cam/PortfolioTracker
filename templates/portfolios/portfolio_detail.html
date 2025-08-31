@@ -112,22 +112,26 @@
   </div>
 
   <div class="mb-4">
-    <label class="form-label">Toggle benchmarks:</label>
-    <div>
-      {% for bm in benchmark_data %}
-        <div class="form-check form-check-inline">
-          <input
-            class="form-check-input benchmark-toggle"
-            type="checkbox"
-            id="bmToggle{{ forloop.counter0 }}"
-            data-index="{{ forloop.counter0 }}"
-            {% if bm.ticker in default_benchmarks %}checked{% endif %}
-          />
-          <label class="form-check-label" for="bmToggle{{ forloop.counter0 }}">
-            {{ bm.label }}
-          </label>
-        </div>
-      {% endfor %}
+    <div class="dropdown">
+      <button class="btn btn-secondary dropdown-toggle" type="button" id="benchmarkDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+        Select Benchmarks
+      </button>
+      <div class="dropdown-menu p-2" aria-labelledby="benchmarkDropdown">
+        {% for bm in benchmark_data %}
+          <div class="form-check">
+            <input
+              class="form-check-input benchmark-option"
+              type="checkbox"
+              id="bmOption{{ forloop.counter0 }}"
+              data-index="{{ forloop.counter0 }}"
+              {% if bm.ticker in default_benchmarks %}checked{% endif %}
+            />
+            <label class="form-check-label {% if bm.ticker in default_benchmarks %}fw-bold{% endif %}" for="bmOption{{ forloop.counter0 }}">
+              {{ bm.label }}
+            </label>
+          </div>
+        {% endfor %}
+      </div>
     </div>
   </div>
 
@@ -201,33 +205,39 @@
       const labels = historyData.map(pt => pt.date);
       const portfolioValues = historyData.map(pt => pt.value);
 
+      const colorPool = [
+        { border: "rgba(0,123,255,1)", background: "rgba(0,123,255,0.2)" },
+        { border: "rgba(40,167,69,1)", background: "rgba(40,167,69,0.2)" },
+        { border: "rgba(220,53,69,1)", background: "rgba(220,53,69,0.2)" }
+      ];
+      let availableColors = [...colorPool];
+
       const datasets = [{
         label: "Portfolio",
         data: portfolioValues,
-        borderColor: "rgba(40, 167, 69, 1)",   // green
-        backgroundColor: "rgba(40, 167, 69, 0.2)",
-        borderWidth: 2,
+        borderColor: "#000",
+        backgroundColor: "rgba(0,0,0,0.1)",
+        borderWidth: 3,
         fill: false
       }];
 
-        // 2) Add one dataset per benchmark
-        const benchmarkData = {{ benchmark_data_json|safe }};
-        const defaultBenchmarks = {{ default_benchmarks|safe }};
-        benchmarkData.forEach((bm, idx) => {
-          const priceMap = {};
-          bm.data.forEach(pt => priceMap[pt.date] = pt.price_usd);
-          const bmPrices = labels.map(date => priceMap[date] ?? null);
+      // 2) Add one dataset per benchmark (hidden by default)
+      const benchmarkData = {{ benchmark_data_json|safe }};
+      benchmarkData.forEach((bm) => {
+        const priceMap = {};
+        bm.data.forEach(pt => priceMap[pt.date] = pt.price_usd);
+        const bmPrices = labels.map(date => priceMap[date] ?? null);
 
-          datasets.push({
-            label: bm.label,
-            data: bmPrices,
-            borderColor: `rgba(${50 + idx*60}, ${100 + idx*30}, ${200 - idx*40}, 1)`,
-            backgroundColor: `rgba(${50 + idx*60}, ${100 + idx*30}, ${200 - idx*40}, 0.2)`,
-            borderWidth: 1.5,
-            fill: false,
-            hidden: !defaultBenchmarks.includes(bm.ticker)
-          });
+        datasets.push({
+          label: bm.label,
+          data: bmPrices,
+          borderColor: "",
+          backgroundColor: "",
+          borderWidth: 2,
+          fill: false,
+          hidden: true
         });
+      });
 
       // 3) Instantiate Chart.js
       const ctx = document.getElementById("historyChart").getContext("2d");
@@ -243,16 +253,55 @@
             mode: 'index',
             intersect: false,
           },
+          plugins: {
+            legend: {
+              labels: {
+                filter: (item, chart) => !chart.data.datasets[item.datasetIndex].hidden
+              }
+            }
+          }
         }
       });
 
-      // 4) Toggle benchmark datasets
-      document.querySelectorAll(".benchmark-toggle").forEach(checkbox => {
-        checkbox.addEventListener("change", (e) => {
-          const idx = parseInt(e.target.dataset.index, 10) + 1;
-          historyChart.data.datasets[idx].hidden = !e.target.checked;
-          historyChart.update();
-        });
+      function activeCount() {
+        return historyChart.data.datasets.slice(1).filter(ds => !ds.hidden).length;
+      }
+
+      function handleBenchmarkToggle(checkbox) {
+        const idx = parseInt(checkbox.dataset.index, 10) + 1;
+        const ds = historyChart.data.datasets[idx];
+        if (checkbox.checked) {
+          if (activeCount() >= 3) {
+            checkbox.checked = false;
+            alert("You can select up to 3 benchmarks.");
+            return;
+          }
+          const color = availableColors.shift();
+          if (!color) {
+            checkbox.checked = false;
+            return;
+          }
+          ds.borderColor = color.border;
+          ds.backgroundColor = color.background;
+          ds.borderWidth = 2;
+          ds.hidden = false;
+          ds._assignedColor = color;
+        } else {
+          ds.hidden = true;
+          if (ds._assignedColor) {
+            availableColors.push(ds._assignedColor);
+            ds._assignedColor = null;
+          }
+        }
+        historyChart.update();
+      }
+
+      // Initialize and bind events
+      document.querySelectorAll(".benchmark-option").forEach(checkbox => {
+        if (checkbox.checked) {
+          handleBenchmarkToggle(checkbox);
+        }
+        checkbox.addEventListener("change", () => handleBenchmarkToggle(checkbox));
       });
     });
   </script>
