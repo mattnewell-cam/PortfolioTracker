@@ -1,17 +1,3 @@
-# backfill_snapshots.py
-"""Backfill ``PortfolioSnapshot`` records for recent days.
-
-This script used to assume a specific portfolio and directly created new
-records.  After restructuring the project to support multiple portfolios and
-changing the ``PortfolioSnapshot`` schema, the original script no longer worked
-properly.  In particular ``update_or_create`` was being called with
-``total_value`` as part of the lookup which prevented existing snapshots from
-being updated.  It also only operated on a hard‑coded portfolio.
-
-The script now iterates over **all** portfolios and uses
-``defaults={'total_value': ...}`` so that existing snapshots for the same
-timestamp are updated instead of duplicated.
-"""
 
 print("▶️  Starting backfill_snapshots.py …")
 
@@ -33,6 +19,7 @@ import yfinance as yf
 from decimal import Decimal
 
 from portfolios.models import Portfolio, PortfolioSnapshot
+from portfolios.benchmarks import get_benchmark_prices_usd
 
 today = timezone.now().date()
 
@@ -77,7 +64,8 @@ for p in Portfolio.objects.all():
                 # 3) Determine FX rate (if needed)
                 ticker = yf.Ticker(symbol)
                 currency = ticker.fast_info.get("currency", "USD")
-                if currency != "USD":
+
+                if currency.upper() not in ("USD", None):
                     fx_tkr = yf.Ticker(f"{currency}USD=X")
                     fx_hist = fx_tkr.history(
                         start=snap_date.isoformat(),
@@ -107,10 +95,14 @@ for p in Portfolio.objects.all():
 
         # Ensure stored value matches the ``DecimalField`` precision
         total_value = total_value.quantize(Decimal("0.01"))
+        benchmark_prices = get_benchmark_prices_usd(snap_date)
         PortfolioSnapshot.objects.update_or_create(
             portfolio=p,
             timestamp=snap_dt,
-            defaults={"total_value": total_value},
+            defaults={
+                "total_value": total_value,
+                "benchmark_values": benchmark_prices,
+            },
         )
         print(f"Created snapshot for {snap_date}----------------------")
         print(total_value)

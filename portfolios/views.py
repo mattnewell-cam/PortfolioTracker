@@ -1,4 +1,3 @@
-from datetime import timedelta
 from django.shortcuts import redirect, get_object_or_404
 from django.http import JsonResponse
 from django.urls import reverse_lazy
@@ -8,7 +7,6 @@ from django.views.decorators.http import require_POST
 from django.views.generic import DetailView, CreateView, FormView, ListView
 from django.db.models import Q
 from django.core.serializers.json import DjangoJSONEncoder
-from bisect import bisect_right
 from django.utils import timezone
 from decimal import Decimal
 
@@ -16,7 +14,6 @@ from core.yfinance_client import get_quote
 from .models import Portfolio, Order, PortfolioSnapshot
 from .constants import BENCHMARK_CHOICES
 from .forms import PortfolioForm, OrderForm, PortfolioLookupForm
-import yfinance as yf
 import json
 
 
@@ -79,69 +76,23 @@ def build_portfolio_context(p, include_details=True):
     benchmark_data = []
     snaps = list(p.snapshots.all().order_by("timestamp"))
     if snaps:
-        snap_dates = [snap.timestamp.date() for snap in snaps]
-        first_date = snap_dates[0]
-        last_date = snap_dates[-1]
+        per_ticker = {t: [] for t, _ in BENCHMARK_CHOICES}
+        for snap in snaps:
+            date_iso = snap.timestamp.date().isoformat()
+            for ticker, _ in BENCHMARK_CHOICES:
+                price = snap.benchmark_values.get(ticker)
+                if price is not None:
+                    per_ticker[ticker].append({"date": date_iso, "price_usd": price})
         for ticker, name in BENCHMARK_CHOICES:
-            label = name
-            try:
-                yf_tkr = yf.Ticker(ticker)
-                hist = yf_tkr.history(
-                    start=(first_date - timedelta(days=30)).isoformat(),
-                    end=(last_date + timedelta(days=1)).isoformat(),
-                    interval="1d",
-                )
-            except Exception:
-                hist = None
-
-            daily_points = []
-            if hist is not None and not hist.empty:
-                hist = hist.sort_index()
-                closes = hist["Close"]
-                indexed_dates = [idx.date() for idx in closes.index]
-                close_values = [float(v) for v in closes.values]
-                for date in snap_dates:
-                    pos = bisect_right(indexed_dates, date) - 1
-                    if pos < 0:
-                        continue
-                    last_close = close_values[pos]
-                    ccy = yf_tkr.fast_info.get("currency", "USD")
-                    if ccy != "USD":
-                        fx_tkr = yf.Ticker(f"{ccy}USD=X")
-                        fx_rate = 1.0
-                        try:
-                            fx_hist = fx_tkr.history(
-                                start=date.isoformat(),
-                                end=(date + timedelta(days=1)).isoformat(),
-                                interval="1d",
-                            )
-                            if not fx_hist.empty:
-                                fx_rate = float(fx_hist["Close"].iloc[0])
-                            else:
-                                fx_hist2 = fx_tkr.history(
-                                    start=(date - timedelta(days=7)).isoformat(),
-                                    end=(date + timedelta(days=1)).isoformat(),
-                                    interval="1d",
-                                )
-                                fx_hist2 = fx_hist2[fx_hist2.index.date <= date]
-                                if not fx_hist2.empty:
-                                    fx_rate = float(fx_hist2["Close"].iloc[-1])
-                        except Exception:
-                            fx_rate = 1.0
-                    else:
-                        fx_rate = 1.0
-                    price_usd = last_close * fx_rate
-                    daily_points.append({"date": date.isoformat(), "price_usd": price_usd})
-
-            if daily_points:
-                base_price = daily_points[0]["price_usd"]
-                for pt in daily_points:
-                    pt["price_usd"] = (pt["price_usd"] / base_price) * 100_000
-
+            pts = per_ticker[ticker]
+            if pts:
+                base = pts[0]["price_usd"]
+                for pt in pts:
+                    pt["price_usd"] = (pt["price_usd"] / base) * 100_000
             benchmark_data.append({
                 "ticker": ticker,
-                "label": label,
-                "data": daily_points,
+                "label": name,
+                "data": pts,
             })
     else:
         for ticker, name in BENCHMARK_CHOICES:
