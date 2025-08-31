@@ -2,7 +2,6 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 from unittest.mock import Mock, patch
-import pandas as pd
 from django.utils import timezone
 
 from .models import Portfolio, Order, PortfolioSnapshot
@@ -177,15 +176,7 @@ class PortfolioPrivacyToggleTests(TestCase):
 
 
 class BenchmarkContextTests(TestCase):
-    @patch('portfolios.views.yf.Ticker')
-    def test_context_includes_all_benchmarks_and_defaults(self, mock_ticker):
-        mock_instance = Mock()
-        mock_instance.history.return_value = pd.DataFrame({
-            'Close': [100.0]
-        }, index=[pd.Timestamp('2024-01-01')])
-        mock_instance.fast_info = {'currency': 'USD'}
-        mock_ticker.return_value = mock_instance
-
+    def test_context_includes_all_benchmarks_and_defaults(self):
         user = User.objects.create_user('bench', password='pass')
         portfolio = Portfolio.objects.create(
             user=user,
@@ -197,11 +188,15 @@ class BenchmarkContextTests(TestCase):
             portfolio=portfolio,
             timestamp=timezone.now(),
             total_value=100000,
+            benchmark_values={t: 100.0 for t, _ in BENCHMARK_CHOICES},
         )
 
         ctx = build_portfolio_context(portfolio)
         self.assertEqual(ctx['default_benchmarks'], portfolio.benchmarks)
         self.assertEqual(len(ctx['benchmark_data']), len(BENCHMARK_CHOICES))
+        for bm in ctx['benchmark_data']:
+            if bm['data']:
+                self.assertEqual(bm['data'][0]['price_usd'], 100000.0)
 
 
 class ExplorePageTests(TestCase):

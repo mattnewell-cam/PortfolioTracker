@@ -33,6 +33,7 @@ import yfinance as yf
 from decimal import Decimal
 
 from portfolios.models import Portfolio, PortfolioSnapshot
+from portfolios.benchmarks import get_benchmark_prices_usd
 
 today = timezone.now().date()
 
@@ -107,10 +108,14 @@ for p in Portfolio.objects.all():
 
         # Ensure stored value matches the ``DecimalField`` precision
         total_value = total_value.quantize(Decimal("0.01"))
+        benchmark_prices = get_benchmark_prices_usd(snap_date)
         PortfolioSnapshot.objects.update_or_create(
             portfolio=p,
             timestamp=snap_dt,
-            defaults={"total_value": total_value},
+            defaults={
+                "total_value": total_value,
+                "benchmark_values": benchmark_prices,
+            },
         )
         print(f"Created snapshot for {snap_date}----------------------")
         print(total_value)

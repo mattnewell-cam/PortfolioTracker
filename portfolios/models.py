@@ -52,6 +52,7 @@ class PortfolioSnapshot(models.Model):
         # auto_now_add=True  # Remove when you want to backfill
     )
     total_value  = models.DecimalField(max_digits=20, decimal_places=2)  # USD value at this moment
+    benchmark_values = JSONField(default=dict)
 
     class Meta:
         ordering = ["timestamp"]
