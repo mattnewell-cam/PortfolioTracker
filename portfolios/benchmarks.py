@@ -19,7 +19,7 @@ def get_benchmark_prices_usd(date):
                 continue
             last_close = float(hist["Close"].iloc[-1])
             currency = tkr.fast_info.get("currency", "USD")
-            if currency != "USD":
+            if currency not in ("USD", None):
                 fx_tkr = yf.Ticker(f"{currency}USD=X")
                 fx_hist = fx_tkr.history(
                     start=(date - timedelta(days=7)).isoformat(),
