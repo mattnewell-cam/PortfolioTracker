@@ -5,7 +5,8 @@ from django.urls import reverse_lazy
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
-from django.views.generic import DetailView, CreateView, FormView
+from django.views.generic import DetailView, CreateView, FormView, ListView
+from django.db.models import Q
 from bisect import bisect_right
 from django.utils import timezone
 
@@ -228,6 +229,37 @@ class PortfolioLookupView(FormView):
             form.add_error("substack_url", "No portfolio found for that Substack URL.")
             return self.form_invalid(form)
         return redirect("portfolios:portfolio-public-detail", pk=portfolio.pk)
+
+
+class PortfolioExploreView(ListView):
+    model = Portfolio
+    template_name = "portfolios/portfolio_explore.html"
+    context_object_name = "portfolios"
+
+    def get_queryset(self):
+        qs = Portfolio.objects.all()
+        query = self.request.GET.get("q")
+        if query:
+            qs = qs.filter(Q(name__icontains=query) | Q(substack_url__icontains=query))
+        return qs.order_by("-created_at")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        for p in ctx["portfolios"]:
+            snap = p.snapshots.order_by("-timestamp").first()
+            if snap:
+                total = snap.total_value
+            else:
+                total = p.cash_balance
+                for symbol, qty in p.holdings.items():
+                    try:
+                        quote = get_quote(symbol)
+                        total += quote["price"] * quote["fx_rate"] * qty
+                    except Exception:
+                        pass
+            p.total_value_cached = total
+        ctx["search_query"] = self.request.GET.get("q", "")
+        return ctx
 
 
 class OrderCreateView(LoginRequiredMixin, CreateView):

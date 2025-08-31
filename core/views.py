@@ -19,6 +19,7 @@ def register(request):
             request.session["pending_user"] = {
                 "username": form.cleaned_data["username"],
                 "password1": form.cleaned_data["password1"],
+                "substack_name": form.cleaned_data["substack_name"],
                 "substack_url": form.cleaned_data["substack_url"],
                 "benchmarks": form.cleaned_data["benchmarks"],
                 "nonce": nonce,
@@ -54,7 +55,7 @@ def verify_substack(request):
                 login(request, user)
                 Portfolio.objects.create(
                     user=user,
-                    name="My Portfolio",
+                    name=pending["substack_name"],
                     substack_url=pending["substack_url"],
                     benchmarks=pending.get("benchmarks", []),
                 )

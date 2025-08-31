@@ -18,6 +18,7 @@ class RegistrationTests(TestCase):
                 'username': 'newuser',
                 'password1': 'strong-pass-123',
                 'password2': 'strong-pass-123',
+                'substack_name': 'Example Stack',
                 'substack_url': 'https://example.substack.com',
             },
         )
@@ -32,6 +33,7 @@ class RegistrationTests(TestCase):
                 'username': 'newuser',
                 'password1': 'strong-pass-123',
                 'password2': 'strong-pass-123',
+                'substack_name': 'Example Stack',
                 'substack_url': 'https://example.substack.com',
             },
         )
@@ -47,6 +49,7 @@ class RegistrationTests(TestCase):
             Portfolio.objects.filter(
                 user__username='newuser',
                 substack_url='https://example.substack.com',
+                name='Example Stack',
             ).exists()
         )
 
@@ -54,7 +57,7 @@ class RegistrationTests(TestCase):
         user = User.objects.create_user('existing', password='pass')
         Portfolio.objects.create(
             user=user,
-            name='My Portfolio',
+            name='Existing Portfolio',
             substack_url='https://example.substack.com',
         )
         response = self.client.post(
@@ -63,6 +66,7 @@ class RegistrationTests(TestCase):
                 'username': 'newuser',
                 'password1': 'strong-pass-123',
                 'password2': 'strong-pass-123',
+                'substack_name': 'Example Stack',
                 'substack_url': 'https://example.substack.com',
             },
         )
@@ -197,4 +201,42 @@ class BenchmarkContextTests(TestCase):
         ctx = build_portfolio_context(portfolio)
         self.assertEqual(ctx['default_benchmarks'], portfolio.benchmarks)
         self.assertEqual(len(ctx['benchmark_data']), len(BENCHMARK_CHOICES))
+
+
+class ExplorePageTests(TestCase):
+    def setUp(self):
+        user1 = User.objects.create_user('alpha', password='pass')
+        user2 = User.objects.create_user('beta', password='pass')
+        self.port1 = Portfolio.objects.create(
+            user=user1,
+            name='Alpha Stack',
+            substack_url='https://alpha.substack.com',
+            is_private=False,
+        )
+        self.port2 = Portfolio.objects.create(
+            user=user2,
+            name='Beta Stack',
+            substack_url='https://beta.substack.com',
+            is_private=True,
+        )
+        PortfolioSnapshot.objects.create(
+            portfolio=self.port1,
+            timestamp=timezone.now(),
+            total_value=1000,
+        )
+        PortfolioSnapshot.objects.create(
+            portfolio=self.port2,
+            timestamp=timezone.now(),
+            total_value=2000,
+        )
+
+    def test_explore_lists_all_portfolios(self):
+        response = self.client.get(reverse('portfolios:portfolio-explore'))
+        self.assertContains(response, 'Alpha Stack')
+        self.assertContains(response, 'Beta Stack')
+
+    def test_search_filters_portfolios(self):
+        response = self.client.get(reverse('portfolios:portfolio-explore'), {'q': 'beta'})
+        self.assertContains(response, 'Beta Stack')
+        self.assertNotContains(response, 'Alpha Stack')
 
