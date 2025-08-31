@@ -258,10 +258,15 @@
           plugins: {
             legend: {
               labels: {
-                filter: (item, chart) => !chart.data.datasets[item.datasetIndex].hidden
-              }
-            }
-          }
+                // v4 signature: (legendItem, data)
+                filter: (item, data) => {
+                  const ds = data?.datasets?.[item.datasetIndex];
+                  return ds ? !ds.hidden : true;   // hide legend entries for hidden datasets
+      }
+    }
+  }
+}
+
         }
       });
 
