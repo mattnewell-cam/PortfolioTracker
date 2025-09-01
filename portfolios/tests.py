@@ -119,6 +119,18 @@ class RegistrationTests(TestCase):
         self.assertNotIn('pending_portfolio', self.client.session)
 
 
+class DefaultRedirectTests(TestCase):
+    def test_root_redirects_to_login_when_anonymous(self):
+        response = self.client.get('/', follow=True)
+        self.assertRedirects(response, '/accounts/login/?next=/portfolios/')
+
+    def test_root_shows_empty_portfolio_for_new_user(self):
+        user = User.objects.create_user('anon@example.com', password='pass')
+        self.client.login(username='anon@example.com', password='pass')
+        response = self.client.get('/', follow=True)
+        self.assertContains(response, 'Add Portfolio')
+
+
 class PublicPortfolioTests(TestCase):
     def setUp(self):
         self.owner = User.objects.create_user('owner', password='pass')

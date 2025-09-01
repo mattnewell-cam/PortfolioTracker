@@ -139,7 +139,7 @@ class PortfolioDetailView(LoginRequiredMixin, DetailView):
     context_object_name = "portfolio"
 
     def dispatch(self, request, *args, **kwargs):
-        if not Portfolio.objects.filter(user=request.user).exists():
+        if request.user.is_authenticated and not Portfolio.objects.filter(user=request.user).exists():
             return render(request, "portfolios/portfolio_empty.html")
         return super().dispatch(request, *args, **kwargs)
 
