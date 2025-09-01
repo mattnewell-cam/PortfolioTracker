@@ -286,3 +286,56 @@ class ExplorePageTests(TestCase):
         with patch('portfolios.views.get_quote') as mock_get_quote:
             self.client.get(reverse('portfolios:portfolio-explore'))
         mock_get_quote.assert_not_called()
+
+
+class FollowPortfolioTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user('owner', password='pass')
+        self.viewer = User.objects.create_user('viewer', password='pass')
+        self.portfolio = Portfolio.objects.create(
+            user=self.owner,
+            name='Owner Portfolio',
+            substack_url='https://owner2.substack.com',
+        )
+
+    def test_follow_requires_login(self):
+        url = reverse('portfolios:portfolio-follow-toggle', args=[self.portfolio.pk])
+        response = self.client.post(url)
+        self.assertRedirects(response, f'/accounts/login/?next={url}')
+
+    def test_follow_and_unfollow(self):
+        self.client.login(username='viewer', password='pass')
+        url = reverse('portfolios:portfolio-follow-toggle', args=[self.portfolio.pk])
+        self.client.post(url)
+        self.assertTrue(
+            self.portfolio.followers.filter(follower=self.viewer).exists()
+        )
+        self.client.post(url)
+        self.assertFalse(
+            self.portfolio.followers.filter(follower=self.viewer).exists()
+        )
+
+    @patch('portfolios.views.get_quote')
+    @patch('portfolios.views.send_mail')
+    def test_follower_notified_on_trade(self, mock_send, mock_quote):
+        mock_quote.return_value = {
+            'price': 100,
+            'bid': 100,
+            'ask': 100,
+            'traded_today': True,
+            'currency': 'USD',
+            'fx_rate': 1,
+            'market_state': 'REGULAR',
+        }
+        # viewer follows portfolio
+        self.client.login(username='viewer', password='pass')
+        follow_url = reverse('portfolios:portfolio-follow-toggle', args=[self.portfolio.pk])
+        self.client.post(follow_url)
+        self.client.logout()
+        # owner places trade
+        self.client.login(username='owner', password='pass')
+        self.client.post(
+            reverse('portfolios:order-create'),
+            {'symbol': 'AAPL', 'side': 'BUY', 'quantity': 1},
+        )
+        mock_send.assert_called()
