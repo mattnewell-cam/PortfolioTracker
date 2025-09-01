@@ -7,7 +7,7 @@
     <div class="me-auto">
       <h1 class="mb-0">{{ portfolio.name }}</h1>
       {% if portfolio.short_description %}
-        <p class="text-muted mt-2 mb-0">{{ portfolio.short_description }}</p>
+        <p class="text-muted fs-5 mt-2 mb-0" ><i>"{{ portfolio.short_description }}"</i></p>
       {% endif %}
     </div>
     {% if is_owner %}
