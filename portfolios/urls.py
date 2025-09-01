@@ -13,5 +13,6 @@ urlpatterns = [
     path("order/", views.OrderCreateView.as_view(), name="order-create"),
     path("toggle-privacy/", views.toggle_privacy, name="portfolio-toggle-privacy"),
     path("follow/<int:pk>/", views.toggle_follow, name="portfolio-follow-toggle"),
+    path("allow-list/", views.allow_list, name="portfolio-allow-list"),
     path("history/", views.portfolio_history, name="portfolio-history"),
 ]

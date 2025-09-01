@@ -3,8 +3,12 @@ from django.test import TestCase
 from django.urls import reverse
 from unittest.mock import Mock, patch
 from django.utils import timezone
+from django.core.files.uploadedfile import SimpleUploadedFile
+from io import BytesIO
+import importlib
+from unittest import skipUnless
 
-from .models import Portfolio, Order, PortfolioSnapshot
+from .models import Portfolio, Order, PortfolioSnapshot, PortfolioAllowedEmail
 from .constants import BENCHMARK_CHOICES
 from .views import build_portfolio_context
 
@@ -182,6 +186,132 @@ class PrivatePortfolioTests(TestCase):
         self.assertNotContains(response, 'Order History')
         self.assertEqual(response.context['positions'], [])
         self.assertEqual(response.context['orders_data'], [])
+
+
+class AllowListTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user('owner@example.com', password='pass')
+        self.portfolio = Portfolio.objects.create(
+            user=self.owner,
+            name='Private',
+            substack_url='https://allow.substack.com',
+            is_private=True,
+            holdings={'AAPL': 1},
+        )
+        PortfolioAllowedEmail.objects.create(
+            portfolio=self.portfolio, email='viewer@example.com'
+        )
+        Order.objects.create(
+            portfolio=self.portfolio,
+            symbol='AAPL',
+            side='BUY',
+            quantity=1,
+            price_executed=100,
+            currency='USD',
+            fx_rate=1.0,
+        )
+
+    def test_allowed_user_can_view_details_and_follow(self):
+        viewer = User.objects.create_user('viewer@example.com', password='pass')
+        self.client.login(username='viewer@example.com', password='pass')
+        response = self.client.get(
+            reverse('portfolios:portfolio-public-detail', args=[self.portfolio.pk])
+        )
+        self.assertFalse(response.context['private_view'])
+        self.assertNotEqual(response.context['positions'], [])
+        self.client.post(
+            reverse('portfolios:portfolio-follow-toggle', args=[self.portfolio.pk])
+        )
+        self.assertTrue(
+            self.portfolio.followers.filter(follower=viewer).exists()
+        )
+
+    def test_unlisted_user_cannot_follow(self):
+        other = User.objects.create_user('other@example.com', password='pass')
+        self.client.login(username='other@example.com', password='pass')
+        self.client.post(
+            reverse('portfolios:portfolio-follow-toggle', args=[self.portfolio.pk])
+        )
+        self.assertFalse(
+            self.portfolio.followers.filter(follower=other).exists()
+        )
+
+    def test_csv_upload_adds_all_emails(self):
+        self.client.login(username='owner@example.com', password='pass')
+        csv_data = "\ufeffalpha@example.com\nbeta@example.com\n".encode("utf-8")
+        upload = SimpleUploadedFile(
+            "emails.csv", csv_data, content_type="text/csv"
+        )
+        self.client.post(
+            reverse('portfolios:portfolio-allow-list'),
+            {'action': 'upload', 'file': upload},
+        )
+        self.assertTrue(
+            PortfolioAllowedEmail.objects.filter(
+                portfolio=self.portfolio, email='alpha@example.com'
+            ).exists()
+        )
+        self.assertTrue(
+            PortfolioAllowedEmail.objects.filter(
+                portfolio=self.portfolio, email='beta@example.com'
+            ).exists()
+        )
+
+    @skipUnless(importlib.util.find_spec("openpyxl"), "openpyxl not installed")
+    def test_excel_upload_adds_all_emails(self):
+        self.client.login(username='owner@example.com', password='pass')
+        from openpyxl import Workbook
+
+        wb = Workbook()
+        ws = wb.active
+        ws.append(['gamma@example.com'])
+        ws.append(['delta@example.com'])
+        stream = BytesIO()
+        wb.save(stream)
+        stream.seek(0)
+        upload = SimpleUploadedFile(
+            "emails.xlsx",
+            stream.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        self.client.post(
+            reverse('portfolios:portfolio-allow-list'),
+            {'action': 'upload', 'file': upload},
+        )
+        self.assertTrue(
+            PortfolioAllowedEmail.objects.filter(
+                portfolio=self.portfolio, email='gamma@example.com'
+            ).exists()
+        )
+        self.assertTrue(
+            PortfolioAllowedEmail.objects.filter(
+                portfolio=self.portfolio, email='delta@example.com'
+            ).exists()
+        )
+
+    def test_delete_single_email(self):
+        self.client.login(username='owner@example.com', password='pass')
+        email = PortfolioAllowedEmail.objects.create(
+            portfolio=self.portfolio, email='trash@example.com'
+        )
+        self.client.post(
+            reverse('portfolios:portfolio-allow-list'),
+            {'action': 'delete', 'id': email.id},
+        )
+        self.assertFalse(
+            PortfolioAllowedEmail.objects.filter(id=email.id).exists()
+        )
+
+    def test_delete_all_emails(self):
+        self.client.login(username='owner@example.com', password='pass')
+        PortfolioAllowedEmail.objects.create(
+            portfolio=self.portfolio, email='other@example.com'
+        )
+        self.client.post(
+            reverse('portfolios:portfolio-allow-list'),
+            {'action': 'delete_all'},
+        )
+        self.assertEqual(self.portfolio.allowed_emails.count(), 0)
 
 
 class PortfolioPrivacyToggleTests(TestCase):
