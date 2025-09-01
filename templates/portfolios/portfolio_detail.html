@@ -3,30 +3,31 @@
 {% block title %}{{ portfolio.name }}{% endblock %}
 
 {% block content %}
-  <h1 class="mb-1">{{ portfolio.name }}</h1>
-  {% if portfolio.short_description %}
-    <p class="text-muted mb-4">{{ portfolio.short_description }}</p>
-  {% else %}
-    <div class="mb-4"></div>
-  {% endif %}
-
-  {% if is_owner %}
-    <form method="post" action="{% url 'portfolios:portfolio-toggle-privacy' %}" class="mb-3">
-      {% csrf_token %}
-      <button type="submit" class="btn btn-secondary">
+  <div class="d-flex align-items-start mb-4">
+    <div class="me-auto">
+      <h1 class="mb-0">{{ portfolio.name }}</h1>
+      {% if portfolio.short_description %}
+        <p class="text-muted fs-5 mt-2 mb-0" ><i>"{{ portfolio.short_description }}"</i></p>
+      {% endif %}
+    </div>
+    {% if is_owner %}
+      <div class="d-flex flex-column align-items-end ms-3">
+        <form method="post" action="{% url 'portfolios:portfolio-toggle-privacy' %}" class="mb-2">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-secondary">
+            {% if portfolio.is_private %}
+              Make Portfolio Public
+            {% else %}
+              Make Portfolio Private
+            {% endif %}
+          </button>
+        </form>
         {% if portfolio.is_private %}
-          Make Portfolio Public
-        {% else %}
-          Make Portfolio Private
+          <a class="btn btn-secondary" href="{% url 'portfolios:portfolio-allow-list' %}">Allow List ({{ allowed_count }})</a>
         {% endif %}
-      </button>
-    </form>
-    {% if portfolio.is_private %}
-      <p class="mb-3">
-        <a class="btn btn-secondary" href="{% url 'portfolios:portfolio-allow-list' %}">Allow List ({{ allowed_count }})</a>
-      </p>
+      </div>
     {% endif %}
-  {% endif %}
+  </div>
 
   {% if not is_owner %}
     {% if not portfolio.is_private or is_allowed %}
