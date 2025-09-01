@@ -8,10 +8,11 @@ from django.views.generic import DetailView, CreateView, ListView
 from django.db.models import Q
 from django.core.serializers.json import DjangoJSONEncoder
 from django.utils import timezone
+from django.core.mail import send_mail
 from decimal import Decimal
 
 from core.yfinance_client import get_quote
-from .models import Portfolio, Order, PortfolioSnapshot
+from .models import Portfolio, Order, PortfolioSnapshot, PortfolioFollower
 from .constants import BENCHMARK_CHOICES
 from .forms import PortfolioForm, OrderForm
 import yfinance as yf
@@ -169,6 +170,12 @@ class PublicPortfolioDetailView(DetailView):
         ctx.update(build_portfolio_context(self.object, include_details=include_details))
         ctx["is_owner"] = is_owner
         ctx["private_view"] = self.object.is_private and not is_owner
+        if self.request.user.is_authenticated:
+            ctx["is_following"] = self.object.followers.filter(
+                follower=self.request.user
+            ).exists()
+        else:
+            ctx["is_following"] = False
         return ctx
 
 
@@ -180,6 +187,20 @@ def toggle_privacy(request):
     portfolio.is_private = not portfolio.is_private
     portfolio.save()
     return redirect("portfolios:portfolio-detail")
+
+
+@require_POST
+@login_required
+def toggle_follow(request, pk):
+    portfolio = get_object_or_404(Portfolio, pk=pk, is_private=False)
+    if portfolio.user == request.user:
+        return redirect("portfolios:portfolio-public-detail", pk=pk)
+    rel, created = PortfolioFollower.objects.get_or_create(
+        portfolio=portfolio, follower=request.user
+    )
+    if not created:
+        rel.delete()
+    return redirect("portfolios:portfolio-public-detail", pk=pk)
 
 
 class PortfolioExploreView(ListView):
@@ -293,6 +314,17 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
                 self.portfolio.holdings[symbol] = remaining
 
         self.portfolio.save()
+        follower_emails = list(
+            self.portfolio.followers.values_list("follower__email", flat=True)
+        )
+        if follower_emails:
+            send_mail(
+                f"New trade in {self.portfolio.name}",
+                f"{self.portfolio.user.username} executed {side} {quantity} {symbol} at {execution_price} {currency}",
+                None,
+                follower_emails,
+                fail_silently=True,
+            )
         return response
 
 

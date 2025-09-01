@@ -30,6 +30,19 @@ class Portfolio(models.Model):
         return f"{self.user.username} – {self.name}"
 
 
+class PortfolioFollower(models.Model):
+    portfolio = models.ForeignKey(
+        Portfolio, on_delete=models.CASCADE, related_name="followers"
+    )
+    follower = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="followed_portfolios"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("portfolio", "follower")
+
+
 class Order(models.Model):
     SIDE_CHOICES = [("BUY", "Buy"), ("SELL", "Sell")]
 
