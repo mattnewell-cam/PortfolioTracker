@@ -20,7 +20,7 @@
   <!-- Bootstrap Navbar -->
   <nav class="navbar navbar-expand-lg navbar-light bg-light">
     <div class="container-fluid">
-      <a class="navbar-brand" href="{% url 'portfolios:portfolio-explore' %}">Finstack Tracker</a>
+      <a class="navbar-brand" href="{% url 'portfolios:portfolio-explore' %}">Subfolio</a>
       <button
         class="navbar-toggler"
         type="button"
@@ -35,24 +35,25 @@
 
       <div class="collapse navbar-collapse" id="navbarSupportedContent">
         <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-          {% if user.is_authenticated %}
-            <li class="nav-item">
-              <a class="nav-link {% if request.resolver_match.url_name == 'portfolio-detail' or request.resolver_match.url_name == 'portfolio-history' %}active{% endif %}" href="{% url 'portfolios:portfolio-detail' %}">My Portfolio</a>
-            </li>
-          {% endif %}
+
           <li class="nav-item">
             <a class="nav-link {% if request.resolver_match.url_name == 'portfolio-explore' or request.resolver_match.url_name == 'portfolio-public-detail' %}active{% endif %}" href="{% url 'portfolios:portfolio-explore' %}">Find a Portfolio</a>
           </li>
           {% if user.is_authenticated %}
             <li class="nav-item">
+              <a class="nav-link {% if request.resolver_match.url_name == 'portfolio-detail' or request.resolver_match.url_name == 'portfolio-history' %}active{% endif %}" href="{% url 'portfolios:portfolio-detail' %}">My Portfolio</a>
+            </li>
+          {% endif %}
+          {% if user.is_authenticated %}
+            <li class="nav-item">
               <form method="post" action="{% url 'logout' %}" class="d-inline">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-outline-secondary ms-2">Logout</button>
+                <button type="submit" class="btn btn-outline-secondary ms-2">Log out</button>
               </form>
             </li>
           {% else %}
             <li class="nav-item">
-              <a class="nav-link btn btn-outline-primary" href="{% url 'login' %}">Login</a>
+              <a class="nav-link btn btn-outline-primary" href="{% url 'login' %}">Log in / Sign up</a>
             </li>
           {% endif %}
         </ul>
