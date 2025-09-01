@@ -10,70 +10,113 @@ from .views import build_portfolio_context
 
 
 class RegistrationTests(TestCase):
-    def test_registration_redirects_to_verification(self):
+    def test_registration_redirects_to_email_verification(self):
         response = self.client.post(
             reverse('register'),
             {
-                'username': 'newuser',
+                'email': 'new@example.com',
                 'password1': 'strong-pass-123',
                 'password2': 'strong-pass-123',
-                'substack_url': 'https://example.substack.com',
             },
         )
-        self.assertRedirects(response, reverse('verify-substack'))
-        self.assertFalse(User.objects.filter(username='newuser').exists())
+        self.assertRedirects(response, reverse('verify-email'))
+        self.assertFalse(User.objects.filter(username='new@example.com').exists())
+        self.assertIn('pending_registration', self.client.session)
 
-    @patch('core.views.feedparser.parse')
-    @patch('core.views.requests.get')
-    def test_substack_verification_creates_user(self, mock_get, mock_parse):
+    def test_email_verification_creates_user(self):
         self.client.post(
             reverse('register'),
             {
-                'username': 'newuser',
+                'email': 'new@example.com',
                 'password1': 'strong-pass-123',
                 'password2': 'strong-pass-123',
+            },
+        )
+        code = self.client.session['pending_registration']['code']
+        response = self.client.post(reverse('verify-email'), {'code': code})
+        self.assertRedirects(response, reverse('add-portfolio'))
+        self.assertTrue(User.objects.filter(username='new@example.com').exists())
+
+    def test_duplicate_email_not_allowed(self):
+        User.objects.create_user('new@example.com', password='pass')
+        response = self.client.post(
+            reverse('register'),
+            {
+                'email': 'new@example.com',
+                'password1': 'strong-pass-123',
+                'password2': 'strong-pass-123',
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'already registered')
+        self.assertNotIn('pending_registration', self.client.session)
+
+    @patch('core.views.feedparser.parse')
+    @patch('core.views.requests.get')
+    def test_portfolio_creation_flow(self, mock_get, mock_parse):
+        self.client.post(
+            reverse('register'),
+            {
+                'email': 'new@example.com',
+                'password1': 'strong-pass-123',
+                'password2': 'strong-pass-123',
+            },
+        )
+        code = self.client.session['pending_registration']['code']
+        self.client.post(reverse('verify-email'), {'code': code})
+
+        self.client.post(
+            reverse('add-portfolio'),
+            {
+                'display_name': 'Example',
                 'substack_url': 'https://example.substack.com',
             },
         )
-        nonce = self.client.session['pending_user']['nonce']
+        nonce = self.client.session['pending_portfolio']['nonce']
         mock_about = Mock()
         mock_about.text = f"about page with {nonce}"
-        mock_feed = Mock(feed={'title': 'Example Stack', 'subtitle': 'Short desc'})
+        mock_feed = Mock(feed={'subtitle': 'Short desc'})
         mock_get.return_value = mock_about
         mock_parse.return_value = mock_feed
 
-        response = self.client.post(reverse('verify-substack'))
+        response = self.client.post(reverse('verify-portfolio'))
         self.assertRedirects(response, reverse('portfolios:portfolio-detail'))
-        self.assertTrue(User.objects.filter(username='newuser').exists())
         self.assertTrue(
             Portfolio.objects.filter(
-                user__username='newuser',
+                user__username='new@example.com',
                 substack_url='https://example.substack.com',
-                name='Example Stack',
+                name='Example',
                 short_description='Short desc',
             ).exists()
         )
 
     def test_duplicate_substack_url_not_allowed(self):
-        user = User.objects.create_user('existing', password='pass')
+        existing = User.objects.create_user('existing@example.com', password='pass')
         Portfolio.objects.create(
-            user=user,
-            name='Existing Portfolio',
+            user=existing,
+            name='Existing',
             substack_url='https://example.substack.com',
         )
-        response = self.client.post(
+        self.client.post(
             reverse('register'),
             {
-                'username': 'newuser',
+                'email': 'new@example.com',
                 'password1': 'strong-pass-123',
                 'password2': 'strong-pass-123',
+            },
+        )
+        code = self.client.session['pending_registration']['code']
+        self.client.post(reverse('verify-email'), {'code': code})
+        response = self.client.post(
+            reverse('add-portfolio'),
+            {
+                'display_name': 'New',
                 'substack_url': 'https://example.substack.com',
             },
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'already linked')
-        self.assertFalse(User.objects.filter(username='newuser').exists())
-        self.assertNotIn('pending_user', self.client.session)
+        self.assertNotIn('pending_portfolio', self.client.session)
 
 
 class PublicPortfolioTests(TestCase):
@@ -228,4 +271,3 @@ class ExplorePageTests(TestCase):
         with patch('portfolios.views.get_quote') as mock_get_quote:
             self.client.get(reverse('portfolios:portfolio-explore'))
         mock_get_quote.assert_not_called()
-

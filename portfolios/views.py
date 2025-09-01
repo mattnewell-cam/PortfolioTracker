@@ -1,4 +1,4 @@
-from django.shortcuts import redirect, get_object_or_404
+from django.shortcuts import redirect, get_object_or_404, render
 from django.http import JsonResponse
 from django.urls import reverse_lazy
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -137,6 +137,11 @@ class PortfolioDetailView(LoginRequiredMixin, DetailView):
     model = Portfolio
     template_name = "portfolios/portfolio_detail.html"
     context_object_name = "portfolio"
+
+    def dispatch(self, request, *args, **kwargs):
+        if not Portfolio.objects.filter(user=request.user).exists():
+            return render(request, "portfolios/portfolio_empty.html")
+        return super().dispatch(request, *args, **kwargs)
 
     def get_object(self, queryset=None):
         return get_object_or_404(Portfolio, user=self.request.user)
