@@ -77,6 +77,7 @@ def add_portfolio(request):
             request.session["pending_portfolio"] = {
                 "name": form.cleaned_data["display_name"],
                 "substack_url": form.cleaned_data["substack_url"],
+                "benchmarks": form.cleaned_data["benchmarks"],
                 "nonce": nonce,
             }
             return redirect("verify-portfolio")
@@ -125,6 +126,7 @@ def verify_portfolio(request):
                     user=request.user,
                     name=pending["name"],
                     substack_url=pending["substack_url"],
+                    benchmarks=pending["benchmarks"],
                     short_description=subtitle,
                 )
                 del request.session["pending_portfolio"]

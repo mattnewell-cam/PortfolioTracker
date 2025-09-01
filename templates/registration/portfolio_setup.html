@@ -17,6 +17,24 @@
           <input type="url" name="substack_url" class="form-control" id="{{ form.substack_url.id_for_label }}" required>
           {% if form.substack_url.errors %}<div class="text-danger">{{ form.substack_url.errors }}</div>{% endif %}
         </div>
+        <div class="mb-3">
+          <label class="form-label">Benchmarks</label>
+          {% for value, label in form.benchmarks.field.choices %}
+            <div class="form-check">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                name="benchmarks"
+                id="benchmark_{{ forloop.counter }}"
+                value="{{ value }}"
+                {% if value in form.benchmarks.value %}checked{% endif %}
+              >
+              <label class="form-check-label" for="benchmark_{{ forloop.counter }}">{{ label }}</label>
+            </div>
+          {% endfor %}
+          {% if form.benchmarks.errors %}<div class="text-danger">{{ form.benchmarks.errors }}</div>{% endif %}
+          <div class="form-text">{{ form.benchmarks.help_text }}</div>
+        </div>
         <button class="btn btn-primary w-100" type="submit">Create Portfolio</button>
       </form>
       <div class="mt-3 text-center">

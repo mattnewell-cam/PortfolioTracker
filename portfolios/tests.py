@@ -70,6 +70,7 @@ class RegistrationTests(TestCase):
             {
                 'display_name': 'Example',
                 'substack_url': 'https://example.substack.com',
+                'benchmarks': [BENCHMARK_CHOICES[0][0]],
             },
         )
         nonce = self.client.session['pending_portfolio']['nonce']
@@ -87,6 +88,7 @@ class RegistrationTests(TestCase):
                 substack_url='https://example.substack.com',
                 name='Example',
                 short_description='Short desc',
+                benchmarks=[BENCHMARK_CHOICES[0][0]],
             ).exists()
         )
 
@@ -112,6 +114,7 @@ class RegistrationTests(TestCase):
             {
                 'display_name': 'New',
                 'substack_url': 'https://example.substack.com',
+                'benchmarks': [BENCHMARK_CHOICES[0][0]],
             },
         )
         self.assertEqual(response.status_code, 200)
