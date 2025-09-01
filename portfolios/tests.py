@@ -3,6 +3,10 @@ from django.test import TestCase
 from django.urls import reverse
 from unittest.mock import Mock, patch
 from django.utils import timezone
+from django.core.files.uploadedfile import SimpleUploadedFile
+from io import BytesIO
+import importlib
+from unittest import skipUnless
 
 from .models import Portfolio, Order, PortfolioSnapshot, PortfolioAllowedEmail
 from .constants import BENCHMARK_CHOICES
@@ -230,6 +234,59 @@ class AllowListTests(TestCase):
         )
         self.assertFalse(
             self.portfolio.followers.filter(follower=other).exists()
+        )
+
+    def test_csv_upload_adds_all_emails(self):
+        self.client.login(username='owner@example.com', password='pass')
+        csv_data = b"alpha@example.com\nbeta@example.com\n"
+        upload = SimpleUploadedFile(
+            "emails.csv", csv_data, content_type="text/csv"
+        )
+        self.client.post(
+            reverse('portfolios:portfolio-allow-list'),
+            {'action': 'upload', 'file': upload},
+        )
+        self.assertTrue(
+            PortfolioAllowedEmail.objects.filter(
+                portfolio=self.portfolio, email='alpha@example.com'
+            ).exists()
+        )
+        self.assertTrue(
+            PortfolioAllowedEmail.objects.filter(
+                portfolio=self.portfolio, email='beta@example.com'
+            ).exists()
+        )
+
+    @skipUnless(importlib.util.find_spec("openpyxl"), "openpyxl not installed")
+    def test_excel_upload_adds_all_emails(self):
+        self.client.login(username='owner@example.com', password='pass')
+        from openpyxl import Workbook
+
+        wb = Workbook()
+        ws = wb.active
+        ws.append(['gamma@example.com'])
+        ws.append(['delta@example.com'])
+        stream = BytesIO()
+        wb.save(stream)
+        stream.seek(0)
+        upload = SimpleUploadedFile(
+            "emails.xlsx",
+            stream.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        self.client.post(
+            reverse('portfolios:portfolio-allow-list'),
+            {'action': 'upload', 'file': upload},
+        )
+        self.assertTrue(
+            PortfolioAllowedEmail.objects.filter(
+                portfolio=self.portfolio, email='gamma@example.com'
+            ).exists()
+        )
+        self.assertTrue(
+            PortfolioAllowedEmail.objects.filter(
+                portfolio=self.portfolio, email='delta@example.com'
+            ).exists()
         )
 
 

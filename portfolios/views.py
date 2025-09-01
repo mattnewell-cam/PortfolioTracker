@@ -9,6 +9,8 @@ from django.db.models import Q
 from django.core.serializers.json import DjangoJSONEncoder
 from django.utils import timezone
 from django.core.mail import send_mail
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
 from decimal import Decimal
 
 from core.yfinance_client import get_quote
@@ -245,15 +247,18 @@ def allow_list(request):
 
                 try:
                     if file.name.lower().endswith(".csv"):
-                        df = pd.read_csv(file)
+                        df = pd.read_csv(file, header=None)
                     else:
-                        df = pd.read_excel(file)
+                        df = pd.read_excel(file, header=None, engine="openpyxl")
                     for e in df.iloc[:, 0].dropna().astype(str):
                         email = e.strip()
-                        if email:
-                            PortfolioAllowedEmail.objects.get_or_create(
-                                portfolio=portfolio, email=email
-                            )
+                        try:
+                            validate_email(email)
+                        except ValidationError:
+                            continue
+                        PortfolioAllowedEmail.objects.get_or_create(
+                            portfolio=portfolio, email=email
+                        )
                 except Exception:
                     pass
                 return redirect("portfolios:portfolio-allow-list")
