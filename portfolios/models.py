@@ -43,6 +43,20 @@ class PortfolioFollower(models.Model):
         unique_together = ("portfolio", "follower")
 
 
+class PortfolioAllowedEmail(models.Model):
+    portfolio = models.ForeignKey(
+        Portfolio, on_delete=models.CASCADE, related_name="allowed_emails"
+    )
+    email = models.EmailField()
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("portfolio", "email")
+
+    def __str__(self):
+        return f"{self.email} for {self.portfolio}"
+
+
 class Order(models.Model):
     SIDE_CHOICES = [("BUY", "Buy"), ("SELL", "Sell")]
 

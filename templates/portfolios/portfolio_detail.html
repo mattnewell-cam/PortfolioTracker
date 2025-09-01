@@ -21,20 +21,27 @@
         {% endif %}
       </button>
     </form>
+    {% if portfolio.is_private %}
+      <p class="mb-3">
+        <a class="btn btn-secondary" href="{% url 'portfolios:portfolio-allow-list' %}">Allow List ({{ allowed_count }})</a>
+      </p>
+    {% endif %}
   {% endif %}
 
-  {% if not is_owner and not portfolio.is_private %}
-    {% if user.is_authenticated %}
-      <form method="post" action="{% url 'portfolios:portfolio-follow-toggle' portfolio.pk %}" class="mb-3">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-primary">
-          {% if is_following %}Unfollow Portfolio{% else %}Follow Portfolio{% endif %}
-        </button>
-      </form>
-    {% else %}
-      <p class="mb-3">
-        <a class="btn btn-primary" href="{% url 'login' %}?next={{ request.path }}">Follow Portfolio</a>
-      </p>
+  {% if not is_owner %}
+    {% if not portfolio.is_private or is_allowed %}
+      {% if user.is_authenticated %}
+        <form method="post" action="{% url 'portfolios:portfolio-follow-toggle' portfolio.pk %}" class="mb-3">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-primary">
+            {% if is_following %}Unfollow Portfolio{% else %}Follow Portfolio{% endif %}
+          </button>
+        </form>
+      {% else %}
+        <p class="mb-3">
+          <a class="btn btn-primary" href="{% url 'login' %}?next={{ request.path }}">Follow Portfolio</a>
+        </p>
+      {% endif %}
     {% endif %}
   {% endif %}
 

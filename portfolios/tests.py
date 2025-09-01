@@ -4,7 +4,7 @@ from django.urls import reverse
 from unittest.mock import Mock, patch
 from django.utils import timezone
 
-from .models import Portfolio, Order, PortfolioSnapshot
+from .models import Portfolio, Order, PortfolioSnapshot, PortfolioAllowedEmail
 from .constants import BENCHMARK_CHOICES
 from .views import build_portfolio_context
 
@@ -182,6 +182,55 @@ class PrivatePortfolioTests(TestCase):
         self.assertNotContains(response, 'Order History')
         self.assertEqual(response.context['positions'], [])
         self.assertEqual(response.context['orders_data'], [])
+
+
+class AllowListTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user('owner@example.com', password='pass')
+        self.portfolio = Portfolio.objects.create(
+            user=self.owner,
+            name='Private',
+            substack_url='https://allow.substack.com',
+            is_private=True,
+            holdings={'AAPL': 1},
+        )
+        PortfolioAllowedEmail.objects.create(
+            portfolio=self.portfolio, email='viewer@example.com'
+        )
+        Order.objects.create(
+            portfolio=self.portfolio,
+            symbol='AAPL',
+            side='BUY',
+            quantity=1,
+            price_executed=100,
+            currency='USD',
+            fx_rate=1.0,
+        )
+
+    def test_allowed_user_can_view_details_and_follow(self):
+        viewer = User.objects.create_user('viewer@example.com', password='pass')
+        self.client.login(username='viewer@example.com', password='pass')
+        response = self.client.get(
+            reverse('portfolios:portfolio-public-detail', args=[self.portfolio.pk])
+        )
+        self.assertFalse(response.context['private_view'])
+        self.assertNotEqual(response.context['positions'], [])
+        self.client.post(
+            reverse('portfolios:portfolio-follow-toggle', args=[self.portfolio.pk])
+        )
+        self.assertTrue(
+            self.portfolio.followers.filter(follower=viewer).exists()
+        )
+
+    def test_unlisted_user_cannot_follow(self):
+        other = User.objects.create_user('other@example.com', password='pass')
+        self.client.login(username='other@example.com', password='pass')
+        self.client.post(
+            reverse('portfolios:portfolio-follow-toggle', args=[self.portfolio.pk])
+        )
+        self.assertFalse(
+            self.portfolio.followers.filter(follower=other).exists()
+        )
 
 
 class PortfolioPrivacyToggleTests(TestCase):

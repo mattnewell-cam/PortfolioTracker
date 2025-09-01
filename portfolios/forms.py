@@ -34,3 +34,11 @@ class OrderForm(forms.ModelForm):
         }
 
 
+class AllowedEmailForm(forms.Form):
+    email = forms.EmailField()
+
+
+class AllowedEmailUploadForm(forms.Form):
+    file = forms.FileField()
+
+

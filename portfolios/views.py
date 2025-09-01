@@ -12,11 +12,10 @@ from django.core.mail import send_mail
 from decimal import Decimal
 
 from core.yfinance_client import get_quote
-from .models import Portfolio, Order, PortfolioSnapshot, PortfolioFollower
+from .models import Portfolio, Order, PortfolioSnapshot, PortfolioFollower, PortfolioAllowedEmail
 from .constants import BENCHMARK_CHOICES
-from .forms import PortfolioForm, OrderForm
+from .forms import PortfolioForm, OrderForm, AllowedEmailForm, AllowedEmailUploadForm
 import yfinance as yf
-from .forms import PortfolioForm, OrderForm
 import json
 
 
@@ -153,6 +152,7 @@ class PortfolioDetailView(LoginRequiredMixin, DetailView):
         ctx.update(build_portfolio_context(self.object))
         ctx["is_owner"] = True
         ctx["private_view"] = False
+        ctx["allowed_count"] = self.object.allowed_emails.count()
         return ctx
 
 
@@ -166,16 +166,28 @@ class PublicPortfolioDetailView(DetailView):
         is_owner = (
             self.request.user.is_authenticated and self.request.user == self.object.user
         )
-        include_details = is_owner or not self.object.is_private
+        is_allowed = False
+        if (
+            self.object.is_private
+            and self.request.user.is_authenticated
+            and self.request.user != self.object.user
+        ):
+            identifier = self.request.user.email or self.request.user.username
+            is_allowed = self.object.allowed_emails.filter(
+                email=identifier
+            ).exists()
+        include_details = is_owner or not self.object.is_private or is_allowed
         ctx.update(build_portfolio_context(self.object, include_details=include_details))
         ctx["is_owner"] = is_owner
-        ctx["private_view"] = self.object.is_private and not is_owner
+        ctx["is_allowed"] = is_allowed
+        ctx["private_view"] = self.object.is_private and not include_details
         if self.request.user.is_authenticated:
             ctx["is_following"] = self.object.followers.filter(
                 follower=self.request.user
             ).exists()
         else:
             ctx["is_following"] = False
+        ctx["allowed_count"] = self.object.allowed_emails.count()
         return ctx
 
 
@@ -192,8 +204,15 @@ def toggle_privacy(request):
 @require_POST
 @login_required
 def toggle_follow(request, pk):
-    portfolio = get_object_or_404(Portfolio, pk=pk, is_private=False)
+    portfolio = get_object_or_404(Portfolio, pk=pk)
     if portfolio.user == request.user:
+        return redirect("portfolios:portfolio-public-detail", pk=pk)
+    identifier = request.user.email or request.user.username
+    allowed = (
+        not portfolio.is_private
+        or portfolio.allowed_emails.filter(email=identifier).exists()
+    )
+    if not allowed:
         return redirect("portfolios:portfolio-public-detail", pk=pk)
     rel, created = PortfolioFollower.objects.get_or_create(
         portfolio=portfolio, follower=request.user
@@ -201,6 +220,53 @@ def toggle_follow(request, pk):
     if not created:
         rel.delete()
     return redirect("portfolios:portfolio-public-detail", pk=pk)
+
+
+@login_required
+def allow_list(request):
+    portfolio = get_object_or_404(Portfolio, user=request.user, is_private=True)
+    emails = portfolio.allowed_emails.all().order_by("email")
+    email_form = AllowedEmailForm()
+    upload_form = AllowedEmailUploadForm()
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "add_email":
+            email_form = AllowedEmailForm(request.POST)
+            if email_form.is_valid():
+                PortfolioAllowedEmail.objects.get_or_create(
+                    portfolio=portfolio, email=email_form.cleaned_data["email"]
+                )
+                return redirect("portfolios:portfolio-allow-list")
+        elif action == "upload":
+            upload_form = AllowedEmailUploadForm(request.POST, request.FILES)
+            if upload_form.is_valid():
+                file = upload_form.cleaned_data["file"]
+                import pandas as pd
+
+                try:
+                    if file.name.lower().endswith(".csv"):
+                        df = pd.read_csv(file)
+                    else:
+                        df = pd.read_excel(file)
+                    for e in df.iloc[:, 0].dropna().astype(str):
+                        email = e.strip()
+                        if email:
+                            PortfolioAllowedEmail.objects.get_or_create(
+                                portfolio=portfolio, email=email
+                            )
+                except Exception:
+                    pass
+                return redirect("portfolios:portfolio-allow-list")
+    return render(
+        request,
+        "portfolios/allow_list.html",
+        {
+            "portfolio": portfolio,
+            "emails": emails,
+            "email_form": email_form,
+            "upload_form": upload_form,
+        },
+    )
 
 
 class PortfolioExploreView(ListView):
