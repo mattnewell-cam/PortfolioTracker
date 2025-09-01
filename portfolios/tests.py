@@ -289,6 +289,30 @@ class AllowListTests(TestCase):
             ).exists()
         )
 
+    def test_delete_single_email(self):
+        self.client.login(username='owner@example.com', password='pass')
+        email = PortfolioAllowedEmail.objects.create(
+            portfolio=self.portfolio, email='trash@example.com'
+        )
+        self.client.post(
+            reverse('portfolios:portfolio-allow-list'),
+            {'action': 'delete', 'id': email.id},
+        )
+        self.assertFalse(
+            PortfolioAllowedEmail.objects.filter(id=email.id).exists()
+        )
+
+    def test_delete_all_emails(self):
+        self.client.login(username='owner@example.com', password='pass')
+        PortfolioAllowedEmail.objects.create(
+            portfolio=self.portfolio, email='other@example.com'
+        )
+        self.client.post(
+            reverse('portfolios:portfolio-allow-list'),
+            {'action': 'delete_all'},
+        )
+        self.assertEqual(self.portfolio.allowed_emails.count(), 0)
+
 
 class PortfolioPrivacyToggleTests(TestCase):
     def setUp(self):

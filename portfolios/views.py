@@ -282,6 +282,15 @@ def allow_list(request):
                 except Exception:
                     pass
                 return redirect("portfolios:portfolio-allow-list")
+        elif action == "delete":
+            email_id = request.POST.get("id")
+            PortfolioAllowedEmail.objects.filter(
+                id=email_id, portfolio=portfolio
+            ).delete()
+            return redirect("portfolios:portfolio-allow-list")
+        elif action == "delete_all":
+            portfolio.allowed_emails.all().delete()
+            return redirect("portfolios:portfolio-allow-list")
     return render(
         request,
         "portfolios/allow_list.html",
