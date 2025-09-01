@@ -33,6 +33,16 @@ ALLOWED_HOSTS = os.getenv(
     "ALLOWED_HOSTS", "127.0.0.1,localhost"
 ).split(",")
 
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+
+EMAIL_HOST_USER = "subfolio.verify@gmail.com"   # full Gmail address
+EMAIL_HOST_PASSWORD = "syui avmx nffi ehrc"
+
+DEFAULT_FROM_EMAIL = "Subfolio <subfolio.verify@gmail.com>"
+
 
 # Application definition
 
