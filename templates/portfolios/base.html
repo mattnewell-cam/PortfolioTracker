@@ -25,12 +25,17 @@
   <!-- Bootstrap Navbar -->
   <nav class="navbar navbar-expand navbar-light bg-light">
     <div class="container-fluid">
-      <a class="navbar-brand" href="{% url 'portfolios:portfolio-explore' %}">Subfolio</a>
-      <ul class="navbar-nav ms-auto mb-2 mb-0">
-        <li class="nav-item">
-          <a class="nav-link {% if request.resolver_match.url_name == 'portfolio-explore' or request.resolver_match.url_name == 'portfolio-public-detail' %}active{% endif %}" href="{% url 'portfolios:portfolio-explore' %}">Find a Portfolio</a>
+      <a class="navbar-brand" href="{% url 'portfolios:portfolio-explore' %}">
+        <img src="{% static 'subfolio_logo.svg' %}" alt="Subfolio logo" height="30" />
+      </a>
+      <ul class="navbar-nav ms-auto mb-2 mb-0 align-items-center">
+        <li class="nav-item me-2">
+          <a class="btn {% if request.resolver_match.url_name == 'portfolio-explore' or request.resolver_match.url_name == 'portfolio-public-detail' %}btn-secondary text-white{% else %}btn-outline-primary{% endif %}" href="{% url 'portfolios:portfolio-explore' %}">Find a Portfolio</a>
         </li>
         {% if user.is_authenticated %}
+          <li class="nav-item me-2">
+            <a class="btn {% if request.resolver_match.url_name == 'portfolio-detail' %}btn-secondary text-white{% else %}btn-outline-primary{% endif %}" href="{% url 'portfolios:portfolio-detail' %}">My Portfolio</a>
+          </li>
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
               <i class="bi bi-person-circle"></i>
