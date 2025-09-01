@@ -1,0 +1,22 @@
+{% extends "portfolios/base.html" %}
+{% block title %}Followed Portfolios{% endblock %}
+
+{% block content %}
+  <h1 class="mb-4">Followed Portfolios</h1>
+  {% for p in portfolios %}
+    <div class="card mb-3" style="min-height: 4rem;">
+      <div class="card-body d-flex justify-content-between align-items-center">
+        <div>
+          <h5 class="card-title mb-1"><a href="{% url 'portfolios:portfolio-public-detail' p.pk %}">{{ p.name }}</a></h5>
+          <small class="text-muted">Created {{ p.created_at|date:"Y-m-d" }}</small>
+        </div>
+        <div class="text-end">
+          <div class="text-muted">Total Value</div>
+          <div class="fw-bold">${{ p.total_value_cached|floatformat:2 }}</div>
+        </div>
+      </div>
+    </div>
+  {% empty %}
+    <p class="text-muted">You aren't following any portfolios.</p>
+  {% endfor %}
+{% endblock %}

@@ -227,6 +227,28 @@ class PortfolioExploreView(ListView):
         return ctx
 
 
+class FollowedPortfoliosView(LoginRequiredMixin, ListView):
+    model = Portfolio
+    template_name = "portfolios/portfolio_followed.html"
+    context_object_name = "portfolios"
+
+    def get_queryset(self):
+        return (
+            Portfolio.objects.filter(followers__follower=self.request.user)
+            .order_by("-created_at")
+        )
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        for p in ctx["portfolios"]:
+            snap = p.snapshots.order_by("-timestamp").first()
+            if snap:
+                p.total_value_cached = snap.total_value
+            else:
+                p.total_value_cached = p.cash_balance
+        return ctx
+
+
 class OrderCreateView(LoginRequiredMixin, CreateView):
     model = Order
     form_class = OrderForm
@@ -369,3 +391,13 @@ def portfolio_history(request):
 
 
     return JsonResponse(data, safe=False)
+
+
+@login_required
+def account_details(request):
+    portfolio = Portfolio.objects.filter(user=request.user).first()
+    return render(
+        request,
+        "portfolios/account_details.html",
+        {"portfolio": portfolio},
+    )

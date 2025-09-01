@@ -1,0 +1,16 @@
+{% extends "portfolios/base.html" %}
+{% block title %}Account Details{% endblock %}
+
+{% block content %}
+  <h1 class="mb-4">Account Details</h1>
+  <ul class="list-unstyled">
+    <li><strong>Email:</strong> {{ user.email }}</li>
+    {% if user.get_full_name %}
+      <li><strong>Display Name:</strong> {{ user.get_full_name }}</li>
+    {% endif %}
+    {% if portfolio %}
+      <li><strong>Substack URL:</strong> {{ portfolio.substack_url }}</li>
+      <li><strong>Substack Name:</strong> {{ portfolio.name }}</li>
+    {% endif %}
+  </ul>
+{% endblock %}
