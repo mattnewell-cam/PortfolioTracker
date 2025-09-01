@@ -152,7 +152,7 @@ class PublicPortfolioTests(TestCase):
             reverse('portfolios:portfolio-public-detail', args=[self.portfolio.pk])
         )
         self.assertContains(response, 'Owner Portfolio')
-        self.assertNotContains(response, 'Place Buy/Sell Order')
+        self.assertNotContains(response, 'id_symbol')
 
 
 class PrivatePortfolioTests(TestCase):
