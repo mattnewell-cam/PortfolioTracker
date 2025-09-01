@@ -238,7 +238,7 @@ class AllowListTests(TestCase):
 
     def test_csv_upload_adds_all_emails(self):
         self.client.login(username='owner@example.com', password='pass')
-        csv_data = b"alpha@example.com\nbeta@example.com\n"
+        csv_data = "\ufeffalpha@example.com\nbeta@example.com\n".encode("utf-8")
         upload = SimpleUploadedFile(
             "emails.csv", csv_data, content_type="text/csv"
         )

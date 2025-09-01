@@ -19,6 +19,13 @@ from .constants import BENCHMARK_CHOICES
 from .forms import PortfolioForm, OrderForm, AllowedEmailForm, AllowedEmailUploadForm
 import yfinance as yf
 import json
+import csv
+from io import StringIO
+
+try:
+    from openpyxl import load_workbook
+except ImportError:  # pragma: no cover
+    load_workbook = None
 
 
 def build_portfolio_context(p, include_details=True):
@@ -243,15 +250,28 @@ def allow_list(request):
             upload_form = AllowedEmailUploadForm(request.POST, request.FILES)
             if upload_form.is_valid():
                 file = upload_form.cleaned_data["file"]
-                import pandas as pd
-
                 try:
+                    emails_raw = []
                     if file.name.lower().endswith(".csv"):
-                        df = pd.read_csv(file, header=None)
+                        file.seek(0)
+                        data = file.read().decode("utf-8")
+                        reader = csv.reader(StringIO(data))
+                        emails_raw = [row[0] for row in reader if row]
                     else:
-                        df = pd.read_excel(file, header=None, engine="openpyxl")
-                    for e in df.iloc[:, 0].dropna().astype(str):
-                        email = e.strip()
+                        if load_workbook is None:
+                            raise ImportError("openpyxl is required for Excel uploads")
+                        file.seek(0)
+                        wb = load_workbook(file)
+                        ws = wb.active
+                        emails_raw = [
+                            row[0]
+                            for row in ws.iter_rows(min_col=1, max_col=1, values_only=True)
+                            if row
+                        ]
+                    for e in emails_raw:
+                        if not e:
+                            continue
+                        email = str(e).strip().lstrip("\ufeff")
                         try:
                             validate_email(email)
                         except ValidationError:
