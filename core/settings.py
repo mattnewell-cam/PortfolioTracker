@@ -25,7 +25,8 @@ SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # Accept common truthy values for enabling debug mode via environment.
-DEBUG = os.getenv("DEBUG", "False").lower() in ("1", "true", "yes")
+# DEBUG = os.getenv("DEBUG", "False").lower() in ("1", "true", "yes")
+DEBUG = True
 
 # Allow configuration of allowed hosts via environment variable, defaulting to
 # local development hosts.
