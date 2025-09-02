@@ -9,6 +9,7 @@ import importlib
 from unittest import skipUnless
 
 from .models import Portfolio, Order, PortfolioSnapshot, PortfolioAllowedEmail
+from decimal import Decimal
 from .constants import BENCHMARK_CHOICES
 from .views import build_portfolio_context
 
@@ -469,3 +470,55 @@ class FollowPortfolioTests(TestCase):
             {'symbol': 'AAPL', 'side': 'BUY', 'quantity': 1},
         )
         mock_send.assert_called()
+
+
+class OrderSymbolTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user('symuser', password='pass')
+        self.portfolio = Portfolio.objects.create(
+            user=self.user,
+            name='Sym Portfolio',
+            substack_url='https://sym.substack.com',
+        )
+
+    def test_symbol_saved_uppercase(self):
+        Order.objects.create(
+            portfolio=self.portfolio,
+            symbol='aapl',
+            side='BUY',
+            quantity=1,
+            price_executed=100,
+            currency='usd',
+            fx_rate=1.0,
+        )
+        order = self.portfolio.orders.first()
+        self.assertEqual(order.symbol, 'AAPL')
+        ctx = build_portfolio_context(self.portfolio)
+        self.assertEqual(ctx['orders_data'][0]['symbol'], 'AAPL')
+
+
+class OrderFxRateTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user('fxuser', password='pass')
+        self.portfolio = Portfolio.objects.create(
+            user=self.user,
+            name='FX Portfolio',
+            substack_url='https://fx.substack.com',
+        )
+
+    def test_fx_rate_precision_for_gbp_pence(self):
+        fx_input = Decimal('0.01353216648')
+        expected = fx_input.quantize(Decimal('0.0000000001'))
+        Order.objects.create(
+            portfolio=self.portfolio,
+            symbol='vod.l',
+            side='BUY',
+            quantity=1,
+            price_executed=100,
+            currency='GBp',
+            fx_rate=fx_input,
+        )
+        order = self.portfolio.orders.first()
+        self.assertEqual(order.fx_rate, expected)
+        ctx = build_portfolio_context(self.portfolio)
+        self.assertEqual(ctx['orders_data'][0]['fx_rate'], expected)
