@@ -66,8 +66,13 @@ class Order(models.Model):
     quantity       = models.PositiveIntegerField()
     price_executed = models.DecimalField(max_digits=20, decimal_places=2)       # local‐currency price
     currency       = models.CharField(max_length=10)
-    fx_rate        = models.DecimalField(max_digits=20, decimal_places=2, default=Decimal("1.00"))       # FX rate at execution
+    fx_rate        = models.DecimalField(max_digits=20, decimal_places=10, default=Decimal("1.0"))       # FX rate at execution
     executed_at    = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if self.symbol:
+            self.symbol = self.symbol.upper()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.portfolio} | {self.side} {self.quantity}×{self.symbol} @ {self.price_executed} {self.currency}"
