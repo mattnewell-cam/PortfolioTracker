@@ -16,7 +16,13 @@ from decimal import Decimal
 from core.yfinance_client import get_quote
 from .models import Portfolio, Order, PortfolioSnapshot, PortfolioFollower, PortfolioAllowedEmail
 from .constants import BENCHMARK_CHOICES
-from .forms import PortfolioForm, OrderForm, AllowedEmailForm, AllowedEmailUploadForm
+from .forms import (
+    PortfolioForm,
+    OrderForm,
+    AllowedEmailForm,
+    AllowedEmailUploadForm,
+    AccountForm,
+)
 import yfinance as yf
 import json
 import csv
@@ -508,8 +514,15 @@ def portfolio_history(request):
 @login_required
 def account_details(request):
     portfolio = Portfolio.objects.filter(user=request.user).first()
+    if request.method == "POST":
+        form = AccountForm(request.POST, instance=request.user)
+        if form.is_valid():
+            form.save()
+            return redirect("portfolios:account-details")
+    else:
+        form = AccountForm(instance=request.user)
     return render(
         request,
         "portfolios/account_details.html",
-        {"portfolio": portfolio},
+        {"portfolio": portfolio, "form": form},
     )
