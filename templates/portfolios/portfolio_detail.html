@@ -5,9 +5,25 @@
 {% block content %}
   <div class="d-flex align-items-start mb-4">
     <div class="me-auto">
-      <h1 class="mb-0">{{ portfolio.name }}</h1>
+      {% if is_owner %}
+      <div class="d-flex align-items-center mb-1">
+        <h1 class="mb-0 me-3">{{ portfolio.name }}</h1>
+        <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#renameForm" aria-expanded="false" aria-controls="renameForm">
+          Change
+        </button>
+      </div>
+      <div class="collapse mb-2" id="renameForm">
+        <form method="post" action="{% url 'portfolios:portfolio-change-name' %}" class="d-flex gap-2">
+          {% csrf_token %}
+          <input type="text" name="name" value="{{ portfolio.name }}" class="form-control form-control-sm" required>
+          <button type="submit" class="btn btn-primary btn-sm">Save</button>
+        </form>
+      </div>
+      {% else %}
+      <h1 class="mb-1">{{ portfolio.name }}</h1>
+      {% endif %}
       {% if portfolio.short_description %}
-        <p class="text-muted fs-5 mt-2 mb-0" ><i>"{{ portfolio.short_description }}"</i></p>
+        <p class="text-muted fs-5 mt-1 mb-0"><i>"{{ portfolio.short_description }}"</i></p>
       {% endif %}
     </div>
     {% if is_owner %}

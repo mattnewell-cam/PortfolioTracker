@@ -346,6 +346,31 @@ class PortfolioPrivacyToggleTests(TestCase):
         self.assertNotContains(response, 'Make Portfolio')
 
 
+class DisplayNameChangeTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user('rename@example.com', password='pass')
+        self.portfolio = Portfolio.objects.create(
+            user=self.user,
+            name='Old Name',
+            substack_url='https://rename.substack.com',
+        )
+
+    def test_owner_can_change_display_name(self):
+        self.client.login(username='rename@example.com', password='pass')
+        response = self.client.post(
+            reverse('portfolios:portfolio-change-name'), {'name': 'New Name'}
+        )
+        self.assertRedirects(response, reverse('portfolios:portfolio-detail'))
+        self.portfolio.refresh_from_db()
+        self.assertEqual(self.portfolio.name, 'New Name')
+
+    def test_blank_name_ignored(self):
+        self.client.login(username='rename@example.com', password='pass')
+        self.client.post(reverse('portfolios:portfolio-change-name'), {'name': '   '})
+        self.portfolio.refresh_from_db()
+        self.assertEqual(self.portfolio.name, 'Old Name')
+
+
 class BenchmarkContextTests(TestCase):
     def test_context_includes_all_benchmarks_and_defaults(self):
         user = User.objects.create_user('bench', password='pass')

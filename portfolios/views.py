@@ -212,6 +212,18 @@ def toggle_privacy(request):
 
 @require_POST
 @login_required
+def change_display_name(request):
+    """Update the portfolio's display name for the current user."""
+    portfolio = get_object_or_404(Portfolio, user=request.user)
+    new_name = request.POST.get("name", "").strip()
+    if new_name:
+        portfolio.name = new_name
+        portfolio.save()
+    return redirect("portfolios:portfolio-detail")
+
+
+@require_POST
+@login_required
 def toggle_follow(request, pk):
     portfolio = get_object_or_404(Portfolio, pk=pk)
     if portfolio.user == request.user:
