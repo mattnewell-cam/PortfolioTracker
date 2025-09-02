@@ -162,6 +162,7 @@ class PortfolioDetailView(LoginRequiredMixin, DetailView):
         ctx["is_owner"] = True
         ctx["private_view"] = False
         ctx["allowed_count"] = self.object.allowed_emails.count()
+        ctx["order_form"] = OrderForm()
         return ctx
 
 
@@ -352,16 +353,23 @@ class FollowedPortfoliosView(LoginRequiredMixin, ListView):
 class OrderCreateView(LoginRequiredMixin, CreateView):
     model = Order
     form_class = OrderForm
-    template_name = "portfolios/order_form.html"
+    template_name = "portfolios/portfolio_detail.html"
 
     def dispatch(self, request, *args, **kwargs):
         self.portfolio = get_object_or_404(Portfolio, user=request.user)
+        if request.method.lower() == "get":
+            return redirect("portfolios:portfolio-detail")
         return super().dispatch(request, *args, **kwargs)
 
-    
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["portfolio"] = self.portfolio
+        ctx.update(build_portfolio_context(self.portfolio))
+        ctx["is_owner"] = True
+        ctx["private_view"] = False
+        ctx["allowed_count"] = self.portfolio.allowed_emails.count()
+        ctx["order_form"] = kwargs.get("form", OrderForm())
         return ctx
 
     #-------------
