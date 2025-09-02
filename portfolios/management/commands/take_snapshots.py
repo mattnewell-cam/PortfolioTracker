@@ -5,6 +5,8 @@ import pytz
 import yfinance as yf
 
 from django.core.management.base import BaseCommand
+from django.core.management import call_command
+from django.db.utils import OperationalError
 from django.utils import timezone
 from decimal import Decimal
 
@@ -19,7 +21,14 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         now = timezone.now()
         since_date = (now - timedelta(days=1)).date()  # look back 24h
-        portfolios = Portfolio.objects.all()
+
+        # Ensure the database schema exists (helpful on fresh setups)
+        try:
+            portfolios = Portfolio.objects.all()
+        except OperationalError:
+            call_command("migrate", interactive=False)
+            portfolios = Portfolio.objects.all()
+
         benchmark_prices = get_benchmark_prices_usd(now.date())
 
         for p in portfolios:
