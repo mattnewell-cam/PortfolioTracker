@@ -24,7 +24,7 @@ class Command(BaseCommand):
 
         # Ensure the database schema exists (helpful on fresh setups)
         try:
-            portfolios = Portfolio.objects.all()
+            portfolios = list(Portfolio.objects.all())
         except OperationalError:
             call_command("migrate", interactive=False)
             portfolios = Portfolio.objects.all()
