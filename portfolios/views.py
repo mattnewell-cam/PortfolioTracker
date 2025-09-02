@@ -12,6 +12,7 @@ from django.core.mail import send_mail
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from decimal import Decimal
+import random
 
 from core.yfinance_client import get_quote
 from .models import Portfolio, Order, PortfolioSnapshot, PortfolioFollower, PortfolioAllowedEmail
@@ -23,6 +24,7 @@ from .forms import (
     AllowedEmailUploadForm,
     AccountForm,
 )
+from core.forms import EmailVerificationForm
 import yfinance as yf
 import json
 import csv
@@ -516,8 +518,29 @@ def account_details(request):
     portfolio = Portfolio.objects.filter(user=request.user).first()
     if request.method == "POST":
         form = AccountForm(request.POST, instance=request.user)
+        old_email = request.user.email
         if form.is_valid():
-            form.save()
+            user = request.user
+            new_display = form.cleaned_data.get("display_name", "")
+            new_email = form.cleaned_data.get("email", "").lower()
+            email_changed = new_email != old_email
+            if new_display != user.first_name:
+                user.first_name = new_display
+                user.save(update_fields=["first_name"])
+            if email_changed:
+                code = f"{random.randint(0, 999999):06d}"
+                request.session["pending_email_change"] = {
+                    "new_email": new_email,
+                    "code": code,
+                }
+                send_mail(
+                    "Verify your new email",
+                    f"Your verification code is {code}",
+                    None,
+                    [new_email],
+                    fail_silently=True,
+                )
+                return redirect("portfolios:account-verify-email")
             return redirect("portfolios:account-details")
     else:
         form = AccountForm(instance=request.user)
@@ -525,4 +548,31 @@ def account_details(request):
         request,
         "portfolios/account_details.html",
         {"portfolio": portfolio, "form": form},
+    )
+
+
+@login_required
+def verify_email_change(request):
+    pending = request.session.get("pending_email_change")
+    if not pending:
+        return redirect("portfolios:account-details")
+
+    if request.method == "POST":
+        form = EmailVerificationForm(request.POST)
+        if form.is_valid():
+            if form.cleaned_data["code"] == pending["code"]:
+                user = request.user
+                user.email = pending["new_email"]
+                user.username = pending["new_email"]
+                user.save()
+                del request.session["pending_email_change"]
+                return redirect("portfolios:account-details")
+            else:
+                form.add_error("code", "Invalid verification code.")
+    else:
+        form = EmailVerificationForm()
+    return render(
+        request,
+        "portfolios/verify_email_change.html",
+        {"form": form, "new_email": pending["new_email"]},
     )

@@ -8,6 +8,7 @@ urlpatterns = [
     path("explore/", views.PortfolioExploreView.as_view(), name="portfolio-explore"),
     path("followed/", views.FollowedPortfoliosView.as_view(), name="followed-portfolios"),
     path("account/", views.account_details, name="account-details"),
+    path("account/verify-email/", views.verify_email_change, name="account-verify-email"),
     path("public/<int:pk>/", views.PublicPortfolioDetailView.as_view(), name="portfolio-public-detail"),
     path("create/", views.PortfolioCreateView.as_view(), name="portfolio-create"),
     path("order/", views.OrderCreateView.as_view(), name="order-create"),

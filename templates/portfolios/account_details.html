@@ -14,19 +14,25 @@
             {% endif %}
             <div class="mb-3">
               <label for="{{ form.display_name.id_for_label }}" class="form-label">Display Name</label>
-              {{ form.display_name }}
+              <div class="input-group">
+                {{ form.display_name }}
+                <button type="button" class="btn btn-outline-secondary" id="edit-display-name">Edit</button>
+              </div>
               {% if form.display_name.errors %}
                 <div class="text-danger small">{{ form.display_name.errors|join:', ' }}</div>
               {% endif %}
             </div>
             <div class="mb-3">
               <label for="{{ form.email.id_for_label }}" class="form-label">Email</label>
-              {{ form.email }}
+              <div class="input-group">
+                {{ form.email }}
+                <button type="button" class="btn btn-outline-secondary" id="edit-email">Edit</button>
+              </div>
               {% if form.email.errors %}
                 <div class="text-danger small">{{ form.email.errors|join:', ' }}</div>
               {% endif %}
             </div>
-            <button type="submit" class="btn btn-primary">Save changes</button>
+            <button type="submit" class="btn btn-primary" id="save-btn" disabled>Save changes</button>
           </form>
         </div>
       </div>
@@ -43,4 +49,23 @@
       {% endif %}
     </div>
   </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const displayInput = document.getElementById('{{ form.display_name.id_for_label }}');
+      const emailInput = document.getElementById('{{ form.email.id_for_label }}');
+      const saveBtn = document.getElementById('save-btn');
+      displayInput.setAttribute('disabled', 'disabled');
+      emailInput.setAttribute('disabled', 'disabled');
+      document.getElementById('edit-display-name').addEventListener('click', function() {
+        displayInput.removeAttribute('disabled');
+        saveBtn.removeAttribute('disabled');
+        displayInput.focus();
+      });
+      document.getElementById('edit-email').addEventListener('click', function() {
+        emailInput.removeAttribute('disabled');
+        saveBtn.removeAttribute('disabled');
+        emailInput.focus();
+      });
+    });
+  </script>
 {% endblock %}
