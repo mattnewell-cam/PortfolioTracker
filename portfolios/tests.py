@@ -328,7 +328,7 @@ class PortfolioPrivacyToggleTests(TestCase):
     def test_toggle_button_visible_to_owner(self):
         self.client.login(username='owner', password='pass')
         response = self.client.get(reverse('portfolios:portfolio-detail'))
-        self.assertContains(response, 'Make Portfolio Private')
+        self.assertContains(response, 'Make Private')
 
     def test_toggle_changes_privacy(self):
         self.client.login(username='owner', password='pass')
@@ -522,3 +522,54 @@ class OrderFxRateTests(TestCase):
         self.assertEqual(order.fx_rate, expected)
         ctx = build_portfolio_context(self.portfolio)
         self.assertEqual(ctx['orders_data'][0]['fx_rate'], expected)
+
+
+class AccountDetailsTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            'user@example.com', email='user@example.com', password='pass', first_name='User'
+        )
+        self.client.login(username='user@example.com', password='pass')
+
+    def test_account_details_shows_display_name(self):
+        response = self.client.get(reverse('portfolios:account-details'))
+        self.assertContains(response, 'value="User"')
+
+    def test_change_display_name(self):
+        response = self.client.post(
+            reverse('portfolios:account-details'),
+            {'display_name': 'New'},
+        )
+        self.assertRedirects(response, reverse('portfolios:account-details'))
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.first_name, 'New')
+        self.assertNotIn('pending_email_change', self.client.session)
+
+    @patch('portfolios.views.send_mail')
+    def test_change_email_requires_verification(self, mock_send):
+        response = self.client.post(
+            reverse('portfolios:account-details'),
+            {'display_name': 'User', 'email': 'new@example.com'},
+        )
+        self.assertRedirects(response, reverse('portfolios:account-verify-email'))
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, 'user@example.com')
+        self.assertIn('pending_email_change', self.client.session)
+        self.assertEqual(
+            self.client.session['pending_email_change']['new_email'], 'new@example.com'
+        )
+
+    @patch('portfolios.views.send_mail')
+    def test_verify_email_change_updates_email(self, mock_send):
+        self.client.post(
+            reverse('portfolios:account-details'),
+            {'display_name': 'User', 'email': 'new@example.com'},
+        )
+        code = self.client.session['pending_email_change']['code']
+        response = self.client.post(
+            reverse('portfolios:account-verify-email'), {'code': code}
+        )
+        self.assertRedirects(response, reverse('portfolios:account-details'))
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, 'new@example.com')
+        self.assertNotIn('pending_email_change', self.client.session)
