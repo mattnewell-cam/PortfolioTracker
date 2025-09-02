@@ -522,8 +522,8 @@ def account_details(request):
         if form.is_valid():
             user = request.user
             new_display = form.cleaned_data.get("display_name", "")
-            new_email = form.cleaned_data.get("email", "").lower()
-            email_changed = new_email != old_email
+            new_email = form.cleaned_data.get("email") or old_email
+            email_changed = new_email.lower() != old_email.lower()
             if new_display != user.first_name:
                 user.first_name = new_display
                 user.save(update_fields=["first_name"])

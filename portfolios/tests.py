@@ -536,12 +536,14 @@ class AccountDetailsTests(TestCase):
         self.assertContains(response, 'value="User"')
 
     def test_change_display_name(self):
-        self.client.post(
+        response = self.client.post(
             reverse('portfolios:account-details'),
-            {'display_name': 'New', 'email': 'user@example.com'},
+            {'display_name': 'New'},
         )
+        self.assertRedirects(response, reverse('portfolios:account-details'))
         self.user.refresh_from_db()
         self.assertEqual(self.user.first_name, 'New')
+        self.assertNotIn('pending_email_change', self.client.session)
 
     @patch('portfolios.views.send_mail')
     def test_change_email_requires_verification(self, mock_send):
