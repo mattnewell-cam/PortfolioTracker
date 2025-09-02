@@ -69,20 +69,24 @@
           <div class="d-flex flex-grow-1 align-items-center">
             <div class="row g-2 w-100">
               <div class="col-12 col-lg-6">
-                <input class="form-control" placeholder="Ticker (on Yahoo Finance)">
+                <input class="form-control"
+                       name="symbol" id="id_symbol"
+                       placeholder="Ticker (on Yahoo Finance)" required>
               </div>
               <div class="col-12 col-lg-6">
-                <input class="form-control" placeholder="Quantity">
+                <input class="form-control"
+                       name="quantity" id="id_quantity" type="number" step="1" min="1"
+                       placeholder="Quantity" required>
               </div>
             </div>
           </div>
 
           <div class="d-flex ms-3 align-self-stretch gap-2">
-            <button type="submit" name="side" value="BUY" class="btn btn-success h-100 fs-5">Buy</button>
-            <button type="submit" name="side" value="SELL" class="btn btn-danger h-100 fs-5">Sell</button>
+            <button type="submit" name="side" value="BUY"  class="btn btn-success h-100 fs-5">Buy</button>
+            <button type="submit" name="side" value="SELL" class="btn btn-danger  h-100 fs-5">Sell</button>
           </div>
-          </form>
-          {% endif %}
+        </form>
+        {% endif %}
 
         </div>
         {% if is_owner and order_form.non_field_errors %}

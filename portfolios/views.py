@@ -141,7 +141,6 @@ class PortfolioCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
-
 class PortfolioDetailView(LoginRequiredMixin, DetailView):
     model = Portfolio
     template_name = "portfolios/portfolio_detail.html"
@@ -375,11 +374,14 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
     #-------------
 
     def form_valid(self, form):
+        print("Running form_valid")
         form.instance.portfolio = self.portfolio
 
         symbol = form.cleaned_data["symbol"].upper()
         side = form.cleaned_data["side"]  # "BUY" or "SELL"
         quantity = form.cleaned_data["quantity"]
+
+        print(symbol, side, quantity)
 
         # 1) Fetch price
         try:
@@ -391,16 +393,17 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
             currency = quote["currency"]
             fx_rate = Decimal(str(quote["fx_rate"]))
             market_state = quote["market_state"]
+            print(price, bid, ask, traded_today, currency, fx_rate)
         except Exception:
             form.add_error(None, f"Could not fetch live quote for “{symbol}”.")
             return self.form_invalid(form)
 
-        # if market_state != "REGULAR":
-        #     form.add_error(
-        #         None,
-        #         "Order failed because the market is currently closed."
-        #     )
-        #     return self.form_invalid(form)
+        if market_state != "REGULAR":
+            form.add_error(
+                None,
+                "Order failed because the market is currently closed."
+            )
+            return self.form_invalid(form)
 
         # 2) Compute execution_price & validate
         if side == "BUY":
@@ -468,6 +471,7 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
 
     def get_success_url(self):
         return reverse_lazy("portfolios:portfolio-detail")
+
 
 @login_required
 def portfolio_history(request):
