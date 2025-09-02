@@ -56,29 +56,33 @@
         <div class="me-4 d-flex flex-column justify-content-between">
           <h2 class="h5">Buy or Sell Shares</h2>
           <p class="mb-0">
-            <strong>Cash Balance (USD):</strong>
+            <strong>Cash Balance:</strong>
             ${{ portfolio.cash_balance|floatformat:2 }}
           </p>
         </div>
+
         {% if is_owner %}
         <form method="post" action="{% url 'portfolios:order-create' %}" class="d-flex flex-grow-1 align-items-stretch">
           {% csrf_token %}
-          <div class="d-flex flex-grow-1 align-items-center gap-2">
-            <div>
-              {{ order_form.symbol.errors }}
-              <input type="text" name="symbol" id="id_symbol" value="{{ order_form.symbol.value|default_if_none:'' }}" class="form-control" placeholder="Ticker (Yahoo Finance)" required>
-            </div>
-            <div>
-              {{ order_form.quantity.errors }}
-              <input type="number" name="quantity" id="id_quantity" value="{{ order_form.quantity.value|default_if_none:'' }}" class="form-control" placeholder="Quantity" step="1" required>
+
+          <div class="d-flex flex-grow-1 align-items-center">
+            <div class="row g-2 w-100">
+              <div class="col-12 col-lg-6">
+                <input class="form-control" placeholder="Ticker (on Yahoo Finance)">
+              </div>
+              <div class="col-12 col-lg-6">
+                <input class="form-control" placeholder="Quantity">
+              </div>
             </div>
           </div>
+
           <div class="d-flex ms-3 align-self-stretch gap-2">
-            <button type="submit" name="side" value="BUY" class="btn btn-success h-100">Buy</button>
-            <button type="submit" name="side" value="SELL" class="btn btn-danger h-100">Sell</button>
+            <button type="submit" name="side" value="BUY" class="btn btn-success h-100 fs-5">Buy</button>
+            <button type="submit" name="side" value="SELL" class="btn btn-danger h-100 fs-5">Sell</button>
           </div>
           </form>
           {% endif %}
+
         </div>
         {% if is_owner and order_form.non_field_errors %}
         <div class="text-danger mt-2">{{ order_form.non_field_errors }}</div>
