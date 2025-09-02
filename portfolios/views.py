@@ -404,7 +404,9 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
 
         # 2) Compute execution_price & validate
         if side == "BUY":
-            execution_price = price if traded_today else ask
+            execution_price = price
+            if not traded_today and ask not in (None, 0):
+                execution_price = ask
             total_cost = execution_price * fx_rate * quantity
             if self.portfolio.cash_balance < total_cost:
                 form.add_error(
@@ -414,7 +416,9 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
                 return self.form_invalid(form)
 
         else:  # SELL
-            execution_price = price if traded_today else bid
+            execution_price = price
+            if not traded_today and bid not in (None, 0):
+                execution_price = bid
             held_qty = self.portfolio.holdings.get(symbol, 0)
             if held_qty < quantity:
                 form.add_error(
@@ -423,6 +427,9 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
                 )
                 return self.form_invalid(form)
 
+        if execution_price in (None, 0):
+            form.add_error(None, f"Could not determine a valid price for “{symbol}”.")
+            return self.form_invalid(form)
         # 3) Assign price and save Order
         form.instance.price_executed = execution_price
         form.instance.fx_rate = fx_rate

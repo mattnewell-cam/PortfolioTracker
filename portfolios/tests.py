@@ -7,6 +7,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from io import BytesIO
 import importlib
 from unittest import skipUnless
+from decimal import Decimal
 
 from .models import Portfolio, Order, PortfolioSnapshot, PortfolioAllowedEmail
 from .constants import BENCHMARK_CHOICES
@@ -469,3 +470,35 @@ class FollowPortfolioTests(TestCase):
             {'symbol': 'AAPL', 'side': 'BUY', 'quantity': 1},
         )
         mock_send.assert_called()
+
+
+class OrderPriceFallbackTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user('owner2', password='pass')
+        self.portfolio = Portfolio.objects.create(
+            user=self.owner,
+            name='Owner2 Portfolio',
+            substack_url='https://owner2.substack.com',
+            cash_balance=Decimal('1000'),
+        )
+        self.client.login(username='owner2', password='pass')
+
+    @patch('portfolios.views.get_quote')
+    def test_buy_falls_back_to_price_when_no_ask(self, mock_quote):
+        mock_quote.return_value = {
+            'price': 10,
+            'bid': 0,
+            'ask': 0,
+            'traded_today': False,
+            'currency': 'USD',
+            'fx_rate': 1,
+            'market_state': 'REGULAR',
+        }
+        self.client.post(
+            reverse('portfolios:order-create'),
+            {'symbol': 'VTY.L', 'side': 'BUY', 'quantity': 5},
+        )
+        self.portfolio.refresh_from_db()
+        order = self.portfolio.orders.get(symbol='VTY.L')
+        self.assertEqual(order.price_executed, Decimal('10'))
+        self.assertEqual(self.portfolio.cash_balance, Decimal('950'))
