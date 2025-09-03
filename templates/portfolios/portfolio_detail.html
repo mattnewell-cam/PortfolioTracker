@@ -169,7 +169,7 @@
 
   <!-- Value Over Time -->
   <h2 class="h5 mb-3">Value Over Time</h2>
-  <div class="mb-2">
+  <div class="d-flex align-items-center mb-2">
     <div class="btn-group btn-group-sm" role="group" id="rangeButtons">
       <button type="button" class="btn btn-outline-primary active" data-range="max">Max</button>
       <button type="button" class="btn btn-outline-primary" data-range="5y">5Y</button>
@@ -178,8 +178,8 @@
       <button type="button" class="btn btn-outline-primary" data-range="6m">6M</button>
       <button type="button" class="btn btn-outline-primary" data-range="1m">1M</button>
     </div>
+    <div id="returnSummary" class="ms-auto small text-end"></div>
   </div>
-  <p id="returnSummary" class="mb-2 small"></p>
   <div class="mb-4">
     <canvas id="historyChart" style="max-width:100%; height:auto;"></canvas>
   </div>
@@ -355,14 +355,20 @@
         const summaryEl = document.getElementById("returnSummary");
         const parts = [];
         const pReturn = computeReturn(historyChart.data.datasets[0].data);
-        if (pReturn !== null) parts.push(`Portfolio: ${pReturn.toFixed(2)}%`);
+        if (pReturn !== null) parts.push({ label: "Portfolio", value: pReturn });
         historyChart.data.datasets.slice(1).forEach(ds => {
           if (!ds.hidden) {
             const r = computeReturn(ds.data);
-            if (r !== null) parts.push(`${ds.label}: ${r.toFixed(2)}%`);
+            if (r !== null) parts.push({ label: ds.label, value: r });
           }
         });
-        summaryEl.textContent = parts.join(" | ");
+        summaryEl.innerHTML = parts
+          .map(({ label, value }) => {
+            const sign = value > 0 ? "+" : "";
+            const cls = value > 0 ? "text-success" : value < 0 ? "text-danger" : "";
+            return `<span class="ms-3">${label}: <span class="${cls}">${sign}${value.toFixed(2)}%</span></span>`;
+          })
+          .join("");
       }
 
       function applyRange(range) {
