@@ -65,6 +65,15 @@ def build_portfolio_context(p, include_details=True):
             if value_usd is not None:
                 total_value += value_usd
 
+    cash_allocation = None
+    if include_details and total_value > 0:
+        for pos in positions:
+            if pos["value_usd"] is not None:
+                pos["allocation"] = (pos["value_usd"] / total_value) * 100
+            else:
+                pos["allocation"] = None
+        cash_allocation = (p.cash_balance / total_value) * 100
+
     orders_data = []
     if include_details:
         for o in p.orders.all().order_by("-executed_at"):
@@ -124,6 +133,7 @@ def build_portfolio_context(p, include_details=True):
     return {
         "positions": positions if include_details else [],
         "total_value": total_value,
+        "cash_allocation": cash_allocation if include_details else None,
         "orders_data": orders_data if include_details else [],
         "history_data": history_data,
         "history_data_json": json.dumps(history_data, cls=DjangoJSONEncoder),

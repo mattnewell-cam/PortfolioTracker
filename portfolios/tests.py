@@ -370,6 +370,30 @@ class BenchmarkContextTests(TestCase):
                 self.assertEqual(bm['data'][0]['price_usd'], 100000.0)
 
 
+class AllocationContextTests(TestCase):
+    @patch('portfolios.views.get_quote')
+    def test_allocations_include_cash(self, mock_quote):
+        user = User.objects.create_user('alloc', password='pass')
+        portfolio = Portfolio.objects.create(
+            user=user,
+            name='Alloc Portfolio',
+            substack_url='https://alloc.substack.com',
+            holdings={'AAPL': 1},
+            cash_balance=1000,
+        )
+        mock_quote.return_value = {
+            'price': 100,
+            'currency': 'USD',
+            'fx_rate': 1,
+        }
+        ctx = build_portfolio_context(portfolio)
+        pos = ctx['positions'][0]
+        expected_pos = Decimal('100') / Decimal('1100') * 100
+        expected_cash = Decimal('1000') / Decimal('1100') * 100
+        self.assertEqual(pos['allocation'], expected_pos)
+        self.assertEqual(ctx['cash_allocation'], expected_cash)
+
+
 class ExplorePageTests(TestCase):
     def setUp(self):
         user1 = User.objects.create_user('alpha', password='pass')
