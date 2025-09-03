@@ -23,10 +23,10 @@
 </head>
 <body>
   <!-- Bootstrap Navbar -->
-  <nav class="navbar navbar-expand navbar-light bg-light">
+  <nav class="navbar navbar-expand navbar-light bg-white border-bottom border-1 border-secondary-subtle">
     <div class="container-fluid">
       <a class="navbar-brand" href="{% url 'portfolios:portfolio-explore' %}">
-        <img src="{% static 'subfolio_v1.png' %}" alt="Subfolio logo" height="50" />
+        <img src="{% static 'subfolio_v2.png' %}" alt="Subfolio logo" height="50" />
       </a>
       <ul class="navbar-nav ms-auto mb-2 mb-0 align-items-center">
         <li class="nav-item me-2">
@@ -36,9 +36,9 @@
           <li class="nav-item me-2">
             <a class="btn {% if request.resolver_match.url_name == 'portfolio-detail' %}btn-secondary text-white{% else %}btn-outline-primary{% endif %}" href="{% url 'portfolios:portfolio-detail' %}">My Portfolio</a>
           </li>
-          <li class="nav-item dropdown">
+          <li class="nav-item dropdown ms-3">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-              <i class="bi bi-person-circle"></i>
+              <i class="bi bi-person-circle fs-3"></i>  <!-- try fs-4 or fs-2 to taste -->
             </a>
             <ul class="dropdown-menu dropdown-menu-end">
               <li><a class="dropdown-item" href="{% url 'portfolios:account-details' %}">Account details</a></li>
