@@ -108,6 +108,7 @@
             <th scope="col">Price (local)</th>
             <th scope="col">FX Rate (→USD)</th>
             <th scope="col">Value (USD)</th>
+            <th scope="col">Allocation</th>
           </tr>
         </thead>
         <tbody>
@@ -136,6 +137,13 @@
                   N/A
                 {% endif %}
               </td>
+              <td>
+                {% if pos.allocation is not None %}
+                  {{ pos.allocation|floatformat:2 }}%
+                {% else %}
+                  N/A
+                {% endif %}
+              </td>
             </tr>
           {% endfor %}
           <tr>
@@ -144,10 +152,12 @@
             <td></td>
             <td></td>
             <td>${{ portfolio.cash_balance|floatformat:2 }}</td>
+            <td>{{ cash_allocation|floatformat:2 }}%</td>
           </tr>
           <tr class="table-light">
             <td colspan="4"><strong>Total Value</strong></td>
             <td><strong>${{ total_value|floatformat:2 }}</strong></td>
+            <td><strong>100%</strong></td>
           </tr>
         </tbody>
       </table>
