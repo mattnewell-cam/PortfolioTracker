@@ -4,6 +4,7 @@ from django.urls import reverse
 from unittest.mock import Mock, patch
 from django.utils import timezone
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
 from io import BytesIO
 import importlib
 from unittest import skipUnless
@@ -12,6 +13,8 @@ from .models import Portfolio, Order, PortfolioSnapshot, PortfolioAllowedEmail
 from decimal import Decimal
 from .constants import BENCHMARK_CHOICES
 from .views import build_portfolio_context
+import pandas as pd
+import pytz
 
 
 class RegistrationTests(TestCase):
@@ -573,3 +576,47 @@ class AccountDetailsTests(TestCase):
         self.user.refresh_from_db()
         self.assertEqual(self.user.email, 'new@example.com')
         self.assertNotIn('pending_email_change', self.client.session)
+
+
+class SnapshotAdjustmentTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user('snap', password='pass')
+        self.portfolio = Portfolio.objects.create(
+            user=self.user,
+            name='Snap Portfolio',
+            substack_url='https://snap.substack.com',
+            holdings={'AAPL': 2},
+            cash_balance=Decimal('0'),
+        )
+
+    def _run_command(self, ticker, quote, now):
+        with patch('portfolios.management.commands.take_snapshots.sys.exit'), \
+             patch('portfolios.management.commands.take_snapshots.yf.Ticker', return_value=ticker), \
+             patch('portfolios.management.commands.take_snapshots.get_quote', return_value=quote), \
+             patch('portfolios.management.commands.take_snapshots.get_benchmark_prices_usd', return_value={}), \
+             patch('portfolios.management.commands.take_snapshots.timezone.now', return_value=now):
+            call_command('take_snapshots')
+
+    def test_take_snapshots_adjusts_holdings_for_splits(self):
+        now = timezone.datetime(2024, 5, 1, tzinfo=pytz.UTC)
+        splits = pd.Series({pd.Timestamp(now.date()): 2})
+        dividends = pd.Series({pd.Timestamp(now.date()): 1})
+        ticker = Mock(splits=splits, dividends=dividends)
+        quote = {'price': 10, 'fx_rate': 1}
+        self._run_command(ticker, quote, now)
+        self.portfolio.refresh_from_db()
+        self.assertEqual(self.portfolio.holdings['AAPL'], 4)
+        snapshot = PortfolioSnapshot.objects.get(portfolio=self.portfolio)
+        self.assertEqual(snapshot.total_value, Decimal('44'))
+
+    def test_take_snapshots_credits_recent_dividends(self):
+        now = timezone.datetime(2024, 5, 1, tzinfo=pytz.UTC)
+        splits = pd.Series(dtype=float)
+        dividends = pd.Series({pd.Timestamp(now.date()): 1.5})
+        ticker = Mock(splits=splits, dividends=dividends)
+        quote = {'price': 10, 'fx_rate': 1}
+        self._run_command(ticker, quote, now)
+        self.portfolio.refresh_from_db()
+        self.assertEqual(self.portfolio.cash_balance, Decimal('3'))
+        snapshot = PortfolioSnapshot.objects.get(portfolio=self.portfolio)
+        self.assertEqual(snapshot.total_value, Decimal('23'))
