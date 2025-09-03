@@ -362,13 +362,19 @@
             if (r !== null) parts.push({ label: ds.label, value: r });
           }
         });
-        summaryEl.innerHTML = parts
-          .map(({ label, value }) => {
-            const sign = value > 0 ? "+" : "";
-            const cls = value > 0 ? "text-success" : value < 0 ? "text-danger" : "";
-            return `<span class="ms-3">${label}: <span class="${cls}">${sign}${value.toFixed(2)}%</span></span>`;
-          })
-          .join("");
+        summaryEl.textContent = "";
+        parts.forEach(({ label, value }) => {
+          const sign = value > 0 ? "+" : "";
+          const cls = value > 0 ? "text-success" : value < 0 ? "text-danger" : "";
+          const span = document.createElement("span");
+          span.classList.add("ms-3");
+          span.append(document.createTextNode(`${label}: `));
+          const inner = document.createElement("span");
+          if (cls) inner.classList.add(cls);
+          inner.textContent = `${sign}${value.toFixed(2)}%`;
+          span.append(inner);
+          summaryEl.append(span);
+        });
       }
 
       function applyRange(range) {
