@@ -29,5 +29,6 @@ urlpatterns = [
     path('accounts/verify-portfolio/', views.verify_portfolio, name='verify-portfolio'),
     path('accounts/', include('django.contrib.auth.urls')),
     path('portfolios/', include(('portfolios.urls', 'portfolios'), namespace='portfolios')),
+    path('announcements/', include(('announcements.urls', 'announcements'), namespace='announcements')),
     path('', RedirectView.as_view(pattern_name='portfolios:portfolio-detail', permanent=False)),
 ]

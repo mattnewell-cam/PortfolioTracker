@@ -1,0 +1,15 @@
+Hi {{ user.get_full_name|default:user.username }},
+
+{{ announcement.company.name }} ({{ announcement.company.ticker }}) just published an important announcement:
+
+{{ announcement.title }}
+{{ announcement.announcement_type.label }} · {{ announcement.published_at|date:"d M Y H:i" }}
+
+{% if announcement.summary %}Summary:
+{{ announcement.summary|truncatewords:80 }}
+
+{% endif %}Read the full announcement: {{ announcement.url }}
+
+You can adjust your preferences any time: {{ feed_url }}
+
+— Subfolio Alerts

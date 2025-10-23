@@ -56,6 +56,7 @@ INSTALLED_APPS = [
 
     # our apps
     "portfolios",
+    "announcements",
 ]
 
 MIDDLEWARE = [
@@ -143,3 +144,4 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 LOGIN_REDIRECT_URL = "/portfolios/"
 LOGOUT_REDIRECT_URL = "/accounts/login/"
+SITE_URL = os.getenv("SITE_URL", "http://localhost:8000")

@@ -34,6 +34,11 @@
         </li>
         {% if user.is_authenticated %}
           <li class="nav-item me-2">
+            <a class="btn {% if request.resolver_match.namespace == 'announcements' %}btn-secondary text-white{% else %}btn-outline-primary{% endif %}" href="{% url 'announcements:feed' %}">Announcements</a>
+          </li>
+        {% endif %}
+        {% if user.is_authenticated %}
+          <li class="nav-item me-2">
             <a class="btn {% if request.resolver_match.url_name == 'portfolio-detail' %}btn-secondary text-white{% else %}btn-outline-primary{% endif %}" href="{% url 'portfolios:portfolio-detail' %}">My Portfolio</a>
           </li>
           <li class="nav-item dropdown ms-3">
@@ -64,6 +69,13 @@
 
   <section class="py-4">
     <div class="container">
+      {% if messages %}
+        <div class="mb-3 d-grid gap-2">
+          {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }} mb-0" role="alert">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
       {% block content %}
       <!-- page‐specific content -->
       {% endblock %}

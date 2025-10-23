@@ -1,0 +1,79 @@
+{% extends "portfolios/base.html" %}
+
+{% block title %}Announcement preferences · Subfolio{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+  <div>
+    <h1 class="h3 mb-1">Announcement preferences</h1>
+    <p class="text-body-secondary mb-0">Control which announcement types are treated as important.</p>
+  </div>
+  <a class="btn btn-outline-secondary" href="{% url 'announcements:feed' %}">Back to feed</a>
+</div>
+
+<div class="row g-4 mt-4">
+  <div class="col-12 col-lg-6">
+    <div class="card h-100">
+      <div class="card-header">Default importance</div>
+      <div class="card-body">
+        <p class="text-body-secondary">Update the default importance for each announcement type. These settings apply to all companies unless overridden below.</p>
+        <form method="post" class="d-grid gap-3">
+          {% csrf_token %}
+          <input type="hidden" name="form_type" value="global" />
+          {% for field in global_form %}
+            <div class="form-check">
+              {{ field }}
+              <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {% if field.help_text %}
+                <small class="text-body-secondary d-block">{{ field.help_text }}</small>
+              {% endif %}
+              {% if field.errors %}
+                <div class="invalid-feedback d-block">{{ field.errors|join:', ' }}</div>
+              {% endif %}
+            </div>
+          {% endfor %}
+          <button type="submit" class="btn btn-primary align-self-start">Save defaults</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-6">
+    <div class="card h-100">
+      <div class="card-header">Company overrides</div>
+      <div class="card-body">
+        {% if company_form.fields.company.queryset|length %}
+          <p class="text-body-secondary">Select a company from your watchlists and choose which announcement types should be treated as important.</p>
+          <form method="post" class="d-grid gap-3">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="company" />
+            <div>
+              {{ company_form.company.label_tag }}
+              {{ company_form.company }}
+              {% if company_form.company.errors %}
+                <div class="invalid-feedback d-block">{{ company_form.company.errors|join:', ' }}</div>
+              {% endif %}
+            </div>
+            {% for field in company_form %}
+              {% if field.name != 'company' %}
+                <div class="form-check">
+                  {{ field }}
+                  <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                  {% if field.help_text %}
+                    <small class="text-body-secondary d-block">{{ field.help_text }}</small>
+                  {% endif %}
+                  {% if field.errors %}
+                    <div class="invalid-feedback d-block">{{ field.errors|join:', ' }}</div>
+                  {% endif %}
+                </div>
+              {% endif %}
+            {% endfor %}
+            <button type="submit" class="btn btn-primary align-self-start">Save company preferences</button>
+          </form>
+        {% else %}
+          <p class="text-body-secondary mb-0">Add companies to a watchlist to enable per-company overrides.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
