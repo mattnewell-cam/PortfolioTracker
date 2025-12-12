@@ -263,8 +263,9 @@ def lookup_quote(request):
     display_name = quote.get("longName") or quote.get("shortName")
     price = quote.get("price")
     currency = quote.get("currency")
+    fx_rate = quote.get("fx_rate")
 
-    if display_name is None or price is None or currency is None:
+    if display_name is None or price is None or currency is None or fx_rate is None:
         return JsonResponse({"error": "Ticker not found. Please try another."}, status=404)
 
     market_state = quote.get("market_state")
@@ -274,6 +275,7 @@ def lookup_quote(request):
             "name": display_name,
             "price": price,
             "currency": currency,
+            "fx_rate": fx_rate,
             "market_state": market_state,
             "market_open": market_state == "REGULAR",
         }

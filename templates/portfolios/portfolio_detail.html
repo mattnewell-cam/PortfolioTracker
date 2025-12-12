@@ -229,6 +229,11 @@
       const orderAmount = document.getElementById('orderAmount');
       const lookupUrl = "{% url 'portfolios:quote-lookup' %}";
 
+      const usdFormatter = new Intl.NumberFormat(undefined, {
+        style: 'currency',
+        currency: 'USD'
+      });
+
       const setOrderEnabled = (enabled) => {
         quantityInput.disabled = !enabled;
         actionButtons.forEach((btn) => {
@@ -244,6 +249,7 @@
         tickerPrice.textContent = '';
         tickerPrice.dataset.price = '';
         tickerPrice.dataset.currency = '';
+        tickerPrice.dataset.fxRate = '';
         marketBadge.textContent = '';
         marketBadge.className = 'badge';
         lookupInput.value = '';
@@ -272,14 +278,16 @@
 
         const price = Number(tickerPrice.dataset.price);
         const currency = tickerPrice.dataset.currency || 'USD';
+        const fxRate = Number(tickerPrice.dataset.fxRate || '1');
 
-        if (!Number.isFinite(price)) {
+        if (!Number.isFinite(price) || !Number.isFinite(fxRate)) {
           orderAmount.textContent = '';
           return;
         }
 
-        const total = qty * price;
-        orderAmount.textContent = `Order value: ${formatPrice(total, currency)}`;
+        const totalLocal = qty * price;
+        const totalUsd = totalLocal * fxRate;
+        orderAmount.textContent = `Order value: ${usdFormatter.format(totalUsd)} (FX ${fxRate.toFixed(4)}, local ${formatPrice(totalLocal, currency)})`;
       };
 
       const showQuote = (data) => {
@@ -288,6 +296,7 @@
         tickerPrice.textContent = formatPrice(data.price, data.currency);
         tickerPrice.dataset.price = data.price;
         tickerPrice.dataset.currency = data.currency || 'USD';
+        tickerPrice.dataset.fxRate = data.fx_rate || '1';
         marketBadge.textContent = data.market_open ? 'Market Open' : 'Market Closed';
         marketBadge.className = data.market_open ? 'badge bg-success' : 'badge bg-secondary';
         symbolInput.value = data.symbol;
