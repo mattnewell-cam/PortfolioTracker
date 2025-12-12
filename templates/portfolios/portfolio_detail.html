@@ -229,9 +229,6 @@
       const orderAmount = document.getElementById('orderAmount');
       const lookupUrl = "{% url 'portfolios:quote-lookup' %}";
 
-      let currentPrice = null;
-      let currentCurrency = 'USD';
-
       const setOrderEnabled = (enabled) => {
         quantityInput.disabled = !enabled;
         actionButtons.forEach((btn) => {
@@ -245,6 +242,8 @@
         tickerCompany.textContent = '';
         tickerSymbol.textContent = '';
         tickerPrice.textContent = '';
+        tickerPrice.dataset.price = '';
+        tickerPrice.dataset.currency = '';
         marketBadge.textContent = '';
         marketBadge.className = 'badge';
         lookupInput.value = '';
@@ -252,8 +251,6 @@
         tickerSearch.classList.remove('d-none');
         errorBox.textContent = '';
         orderAmount.textContent = '';
-        currentPrice = null;
-        currentCurrency = 'USD';
         setOrderEnabled(false);
         lookupInput.focus();
       };
@@ -267,30 +264,33 @@
       };
 
       const updateOrderAmount = () => {
-        if (currentPrice === null || currentPrice === undefined) {
-          orderAmount.textContent = '';
-          return;
-        }
-
         const qty = Number(quantityInput.value);
         if (!Number.isFinite(qty) || qty <= 0) {
           orderAmount.textContent = 'Enter a quantity to see the order value.';
           return;
         }
 
-        const total = qty * currentPrice;
-        orderAmount.textContent = `Order value: ${formatPrice(total, currentCurrency)}`;
+        const price = Number(tickerPrice.dataset.price);
+        const currency = tickerPrice.dataset.currency || 'USD';
+
+        if (!Number.isFinite(price)) {
+          orderAmount.textContent = '';
+          return;
+        }
+
+        const total = qty * price;
+        orderAmount.textContent = `Order value: ${formatPrice(total, currency)}`;
       };
 
       const showQuote = (data) => {
         tickerCompany.textContent = data.name;
         tickerSymbol.textContent = data.symbol;
         tickerPrice.textContent = formatPrice(data.price, data.currency);
+        tickerPrice.dataset.price = data.price;
+        tickerPrice.dataset.currency = data.currency || 'USD';
         marketBadge.textContent = data.market_open ? 'Market Open' : 'Market Closed';
         marketBadge.className = data.market_open ? 'badge bg-success' : 'badge bg-secondary';
         symbolInput.value = data.symbol;
-        currentPrice = data.price;
-        currentCurrency = data.currency || 'USD';
         tickerSearch.classList.add('d-none');
         tickerInfo.classList.remove('d-none');
         setOrderEnabled(true);
