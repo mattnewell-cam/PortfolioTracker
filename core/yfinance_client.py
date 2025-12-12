@@ -12,24 +12,35 @@ def get_quote(symbol):
     info = ticker.info
 
     currency = info.get("currency")
-    if currency != "USD":
-        fx_rate = yf.Ticker(f"{currency}USD=X").fast_info["last_price"]
-        if currency == "GBp":
-            fx_rate /= 100
+    price = info.get("currentPrice", None)
 
-    else:
+    # UK tickers report in pence (GBp); convert to pounds for display and FX
+    fx_currency = currency
+    if currency == "GBp":
+        fx_currency = "GBP"
+        if price is not None:
+            price = price / 100
+
+    if fx_currency and fx_currency != "USD":
+        fx_rate = yf.Ticker(f"{fx_currency}USD=X").fast_info["last_price"]
+    elif fx_currency == "USD":
         fx_rate = 1.0
+    else:
+        fx_rate = None
 
     traded_today = False if info.get("open") == 0.0 else True
 
     return {
-        "price": info.get("currentPrice", None),
+        "price": price,
         "bid": info.get("bid"),
         "ask": info.get("ask"),
         "traded_today": traded_today,
-        "currency": info.get("currency", None),
+        "currency": fx_currency,
         "fx_rate": fx_rate,
         "market_state": info.get("marketState", None),
+        "shortName": info.get("shortName"),
+        "longName": info.get("longName"),
+        "symbol": info.get("symbol") or symbol,
     }
 
 

@@ -64,27 +64,52 @@
         </div>
 
         {% if is_owner %}
-        <form method="post" action="{% url 'portfolios:order-create' %}" class="d-flex flex-grow-1 align-items-stretch">
+        <form method="post" action="{% url 'portfolios:order-create' %}" class="d-flex flex-grow-1 align-items-stretch" id="orderForm">
           {% csrf_token %}
+          <input type="hidden" name="symbol" id="id_symbol" required>
 
           <div class="d-flex flex-grow-1 align-items-center">
-            <div class="row g-2 w-100">
+            <div class="row g-3 w-100 align-items-start">
               <div class="col-12 col-lg-6">
-                <input class="form-control"
-                       name="symbol" id="id_symbol"
-                       placeholder="Ticker (on Yahoo Finance)" required>
+                <div id="tickerSearch" class="input-group">
+                  <input class="form-control" id="tickerLookupInput" placeholder="Enter ticker..." aria-label="Enter ticker">
+                  <button class="btn btn-primary" type="button" id="tickerLookupButton">Find</button>
+                </div>
+
+                <div id="tickerInfo" class="d-none border rounded p-3 bg-light">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <div class="text-muted small text-uppercase">Company</div>
+                      <div class="fw-semibold" id="tickerCompany"></div>
+                      <div class="text-muted" id="tickerSymbol"></div>
+                    </div>
+                    <div class="text-end">
+                      <div class="text-muted small text-uppercase">Current Price</div>
+                      <div class="fw-semibold" id="tickerPrice"></div>
+                      <span class="badge" id="marketBadge"></span>
+                    </div>
+                  </div>
+                  <button type="button" class="btn btn-link p-0 mt-2" id="changeTickerButton">Change ticker</button>
+                </div>
+
+                <div id="tickerError" class="text-danger small mt-2"></div>
               </div>
-              <div class="col-12 col-lg-6">
-                <input class="form-control"
-                       name="quantity" id="id_quantity" type="number" step="1" min="1"
-                       placeholder="Quantity" required>
+
+              <div class="col-12 col-lg-6 d-none" id="orderDetails">
+                <div class="row g-2 align-items-center">
+                  <div class="col-12 col-sm-6">
+                    <input class="form-control"
+                           name="quantity" id="id_quantity" type="number" step="1" min="1"
+                           placeholder="Quantity" required disabled>
+                    <div class="form-text" id="orderAmount"></div>
+                  </div>
+                  <div class="col-12 col-sm-6 d-flex gap-2">
+                    <button type="submit" name="side" value="BUY"  class="btn btn-success h-100 fs-5 flex-grow-1 order-action-btn" disabled>Buy</button>
+                    <button type="submit" name="side" value="SELL" class="btn btn-danger  h-100 fs-5 flex-grow-1 order-action-btn" disabled>Sell</button>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-
-          <div class="d-flex ms-3 align-self-stretch gap-2">
-            <button type="submit" name="side" value="BUY"  class="btn btn-success h-100 fs-5">Buy</button>
-            <button type="submit" name="side" value="SELL" class="btn btn-danger  h-100 fs-5">Sell</button>
           </div>
         </form>
         {% endif %}
@@ -183,6 +208,156 @@
   <div class="mb-4">
     <canvas id="historyChart" style="max-width:100%; height:auto;"></canvas>
   </div>
+
+  <script>
+    (function() {
+      const lookupButton = document.getElementById('tickerLookupButton');
+      const lookupInput = document.getElementById('tickerLookupInput');
+      const tickerSearch = document.getElementById('tickerSearch');
+      const tickerInfo = document.getElementById('tickerInfo');
+      const tickerCompany = document.getElementById('tickerCompany');
+      const tickerSymbol = document.getElementById('tickerSymbol');
+      const tickerPrice = document.getElementById('tickerPrice');
+      const marketBadge = document.getElementById('marketBadge');
+      const changeTickerButton = document.getElementById('changeTickerButton');
+      const errorBox = document.getElementById('tickerError');
+      const symbolInput = document.getElementById('id_symbol');
+      const quantityInput = document.getElementById('id_quantity');
+      const actionButtons = document.querySelectorAll('.order-action-btn');
+      const orderDetails = document.getElementById('orderDetails');
+      const orderForm = document.getElementById('orderForm');
+      const orderAmount = document.getElementById('orderAmount');
+      const lookupUrl = "{% url 'portfolios:quote-lookup' %}";
+
+      const usdFormatter = new Intl.NumberFormat(undefined, {
+        style: 'currency',
+        currency: 'USD'
+      });
+
+      const setOrderEnabled = (enabled) => {
+        quantityInput.disabled = !enabled;
+        actionButtons.forEach((btn) => {
+          btn.disabled = !enabled;
+        });
+        orderDetails.classList.toggle('d-none', !enabled);
+      };
+
+      const resetLookup = () => {
+        symbolInput.value = '';
+        tickerCompany.textContent = '';
+        tickerSymbol.textContent = '';
+        tickerPrice.textContent = '';
+        tickerPrice.dataset.price = '';
+        tickerPrice.dataset.currency = '';
+        tickerPrice.dataset.fxRate = '';
+        marketBadge.textContent = '';
+        marketBadge.className = 'badge';
+        lookupInput.value = '';
+        tickerInfo.classList.add('d-none');
+        tickerSearch.classList.remove('d-none');
+        errorBox.textContent = '';
+        orderAmount.textContent = '';
+        setOrderEnabled(false);
+        lookupInput.focus();
+      };
+
+      const formatPrice = (price, currency) => {
+        const formatter = new Intl.NumberFormat(undefined, {
+          style: 'currency',
+          currency: currency || 'USD'
+        });
+        return formatter.format(price);
+      };
+
+      const updateOrderAmount = () => {
+        const qty = Number(quantityInput.value);
+        if (!Number.isFinite(qty) || qty <= 0) {
+          orderAmount.textContent = 'Enter a quantity to see the order value.';
+          return;
+        }
+
+        const price = Number(tickerPrice.dataset.price);
+        const currency = tickerPrice.dataset.currency || 'USD';
+        const fxRate = Number(tickerPrice.dataset.fxRate || '1');
+
+        if (!Number.isFinite(price) || !Number.isFinite(fxRate)) {
+          orderAmount.textContent = '';
+          return;
+        }
+
+        const totalLocal = qty * price;
+        const totalUsd = totalLocal * fxRate;
+        orderAmount.textContent = `Order value: ${usdFormatter.format(totalUsd)} (FX ${fxRate.toFixed(4)}, local ${formatPrice(totalLocal, currency)})`;
+      };
+
+      const showQuote = (data) => {
+        tickerCompany.textContent = data.name;
+        tickerSymbol.textContent = data.symbol;
+        tickerPrice.textContent = formatPrice(data.price, data.currency);
+        tickerPrice.dataset.price = data.price;
+        tickerPrice.dataset.currency = data.currency || 'USD';
+        tickerPrice.dataset.fxRate = data.fx_rate || '1';
+        marketBadge.textContent = data.market_open ? 'Market Open' : 'Market Closed';
+        marketBadge.className = data.market_open ? 'badge bg-success' : 'badge bg-secondary';
+        symbolInput.value = data.symbol;
+        tickerSearch.classList.add('d-none');
+        tickerInfo.classList.remove('d-none');
+        setOrderEnabled(true);
+        updateOrderAmount();
+        quantityInput.focus();
+      };
+
+      const handleLookup = (event) => {
+        event.preventDefault();
+        const ticker = lookupInput.value.trim();
+        errorBox.textContent = '';
+
+        if (!ticker) {
+          errorBox.textContent = 'Please enter a ticker symbol.';
+          return;
+        }
+
+        lookupButton.disabled = true;
+        lookupButton.textContent = 'Finding...';
+
+        fetch(`${lookupUrl}?symbol=${encodeURIComponent(ticker)}`)
+          .then((response) => response.json().then((data) => ({ ok: response.ok, data })))
+          .then(({ ok, data }) => {
+            if (!ok) {
+              throw new Error(data.error || 'Unable to find that ticker.');
+            }
+            showQuote(data);
+          })
+          .catch((error) => {
+            errorBox.textContent = error.message;
+          })
+          .finally(() => {
+            lookupButton.disabled = false;
+            lookupButton.textContent = 'Find';
+          });
+      };
+
+      lookupButton.addEventListener('click', handleLookup);
+
+      lookupInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          handleLookup(event);
+        }
+      });
+
+      changeTickerButton.addEventListener('click', resetLookup);
+
+      quantityInput.addEventListener('input', updateOrderAmount);
+
+      orderForm.addEventListener('submit', (event) => {
+        if (!symbolInput.value) {
+          event.preventDefault();
+          errorBox.textContent = 'Please look up a ticker before placing an order.';
+          resetLookup();
+        }
+      });
+    })();
+  </script>
 
   <div class="mb-4">
     <div class="dropdown">
