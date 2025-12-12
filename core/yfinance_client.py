@@ -30,6 +30,9 @@ def get_quote(symbol):
         "currency": info.get("currency", None),
         "fx_rate": fx_rate,
         "market_state": info.get("marketState", None),
+        "shortName": info.get("shortName"),
+        "longName": info.get("longName"),
+        "symbol": info.get("symbol") or symbol,
     }
 
 

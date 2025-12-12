@@ -250,6 +250,37 @@ def toggle_follow(request, pk):
 
 
 @login_required
+def lookup_quote(request):
+    symbol = request.GET.get("symbol", "").strip()
+    if not symbol:
+        return JsonResponse({"error": "Please enter a ticker symbol."}, status=400)
+
+    try:
+        quote = get_quote(symbol)
+    except Exception:
+        return JsonResponse({"error": "Unable to fetch quote for that ticker."}, status=400)
+
+    display_name = quote.get("longName") or quote.get("shortName")
+    price = quote.get("price")
+    currency = quote.get("currency")
+
+    if display_name is None or price is None or currency is None:
+        return JsonResponse({"error": "Ticker not found. Please try another."}, status=404)
+
+    market_state = quote.get("market_state")
+    return JsonResponse(
+        {
+            "symbol": (quote.get("symbol") or symbol).upper(),
+            "name": display_name,
+            "price": price,
+            "currency": currency,
+            "market_state": market_state,
+            "market_open": market_state == "REGULAR",
+        }
+    )
+
+
+@login_required
 def allow_list(request):
     portfolio = get_object_or_404(Portfolio, user=request.user, is_private=True)
     emails = portfolio.allowed_emails.all().order_by("email")
