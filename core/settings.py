@@ -21,12 +21,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # Use an environment variable with a sensible default for development.
-SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me")
+DEFAULT_SECRET_KEY = "django-insecure-change-me"
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # Accept common truthy values for enabling debug mode via environment.
-# DEBUG = os.getenv("DEBUG", "False").lower() in ("1", "true", "yes")
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "False").lower() in ("1", "true", "yes")
+
+SECRET_KEY = os.getenv("SECRET_KEY", DEFAULT_SECRET_KEY)
+if not DEBUG and SECRET_KEY == DEFAULT_SECRET_KEY:
+    raise ValueError("SECRET_KEY environment variable must be set when DEBUG is False.")
 
 # Allow configuration of allowed hosts via environment variable, defaulting to
 # local development hosts.
@@ -39,8 +42,8 @@ EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
-EMAIL_HOST_USER = "subfolio.verify@gmail.com"   # full Gmail address
-EMAIL_HOST_PASSWORD = "syui avmx nffi ehrc"
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 
 DEFAULT_FROM_EMAIL = "Subfolio <subfolio.verify@gmail.com>"
 
