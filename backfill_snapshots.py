@@ -159,7 +159,8 @@ def build_benchmark_price_maps(benchmark_symbols, currency_map, price_hist, fx_m
             if fx_currency and fx_currency != "USD":
                 fx_rate = fx_map.get(fx_currency, Decimal("1.0"))
 
-            benchmark_maps[snap_date][symbol] = close_local * fx_rate
+            # Convert to float for JSON serialization on PortfolioSnapshot
+            benchmark_maps[snap_date][symbol] = float(close_local * fx_rate)
 
     return benchmark_maps
 
