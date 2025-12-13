@@ -62,54 +62,75 @@ def build_currency_map(symbols):
     return currency_map
 
 
-def build_price_map(symbols, snap_date, currency_map, price_hist):
-    if not symbols or price_hist is None or price_hist.empty:
-        return {}
+def _series_by_date(close_series):
+    close_series = close_series.copy()
+    close_series.index = close_series.index.date
+    close_series = close_series[~close_series.index.duplicated(keep="last")]
+    return close_series.sort_index()
 
-    price_map = {}
+
+def build_price_history_maps(symbols, currency_map, price_hist, target_dates):
+    if not symbols or price_hist is None or price_hist.empty:
+        return {snap_date: {} for snap_date in target_dates}
+
+    price_map_by_date = {snap_date: {} for snap_date in target_dates}
+    sorted_dates = sorted(target_dates)
     symbol_count = len(symbols)
+
     for symbol in symbols:
         try:
             close_series = _get_close_series(price_hist, symbol, symbol_count)
-            if close_series is None:
+            if close_series is None or close_series.empty:
                 continue
 
-            close_series = close_series[close_series.index.date <= snap_date]
-            if close_series.empty:
-                continue
+            close_series = _series_by_date(close_series)
+            all_dates = sorted(set(close_series.index).union(sorted_dates))
+            filled = close_series.reindex(all_dates).ffill()
 
-            close_local = Decimal(str(close_series.iloc[-1]))
-            if currency_map.get(symbol) == "GBp":
-                close_local = close_local / Decimal("100")
+            for snap_date in sorted_dates:
+                price_value = filled.get(snap_date)
+                if price_value is None or pd.isna(price_value):
+                    continue
 
-            price_map[symbol] = close_local
+                close_local = Decimal(str(price_value))
+                if currency_map.get(symbol) == "GBp":
+                    close_local = close_local / Decimal("100")
+
+                price_map_by_date[snap_date][symbol] = close_local
         except Exception:
             continue
 
-    return price_map
+    return price_map_by_date
 
 
-def build_fx_map(currencies, snap_date, fx_hist):
+def build_fx_history_maps(currencies, fx_hist, target_dates):
     if not currencies or fx_hist is None or fx_hist.empty:
-        return {}
+        return {snap_date: {} for snap_date in target_dates}
 
     fx_symbols = [f"{currency}USD=X" for currency in currencies if currency]
-    fx_map = {}
+    fx_map_by_date = {snap_date: {} for snap_date in target_dates}
+    sorted_dates = sorted(target_dates)
+
     for currency in currencies:
         try:
             close_series = _get_close_series(fx_hist, f"{currency}USD=X", len(fx_symbols))
-            if close_series is None:
+            if close_series is None or close_series.empty:
                 continue
 
-            close_series = close_series[close_series.index.date <= snap_date]
-            if close_series.empty:
-                continue
+            close_series = _series_by_date(close_series)
+            all_dates = sorted(set(close_series.index).union(sorted_dates))
+            filled = close_series.reindex(all_dates).ffill()
 
-            fx_map[currency] = Decimal(str(close_series.iloc[-1]))
+            for snap_date in sorted_dates:
+                fx_value = filled.get(snap_date)
+                if fx_value is None or pd.isna(fx_value):
+                    continue
+
+                fx_map_by_date[snap_date][currency] = Decimal(str(fx_value))
         except Exception:
             continue
 
-    return fx_map
+    return fx_map_by_date
 
 
 portfolios = list(Portfolio.objects.all())
@@ -152,19 +173,19 @@ fx_hist = (
     else None
 )
 
+snapshot_dates = [today - timedelta(days=days_ago) for days_ago in range(14, 0, -1) if (today - timedelta(days=days_ago)).weekday() <= 4]
+price_maps_by_date = build_price_history_maps(all_symbols, currency_map, price_hist, snapshot_dates)
+fx_maps_by_date = build_fx_history_maps(fx_currencies, fx_hist, snapshot_dates)
+
 for p in portfolios:
     print(f"→ Processing Portfolio {p.pk}")
-    for days_ago in range(14, 0, -1):
-        snap_date = today - timedelta(days=days_ago)
+    for snap_date in snapshot_dates:
         snap_dt = timezone.make_aware(
             timezone.datetime(snap_date.year, snap_date.month, snap_date.day, 16, 0)
         )
 
-        if snap_date.weekday() > 4:  # Don't create snapshot for weekends
-            continue
-
-        price_map = build_price_map(all_symbols, snap_date, currency_map, price_hist)
-        fx_map = build_fx_map(fx_currencies, snap_date, fx_hist)
+        price_map = price_maps_by_date.get(snap_date, {})
+        fx_map = fx_maps_by_date.get(snap_date, {})
 
         total_value = p.cash_balance
         for symbol, qty in p.holdings.items():
