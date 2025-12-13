@@ -12,7 +12,7 @@ from decimal import Decimal
 
 from portfolios.models import Portfolio, PortfolioSnapshot
 from portfolios.benchmarks import get_benchmark_prices_usd
-from core.yfinance_client import get_quote  # updated import
+from core.yfinance_client import get_quote, get_quotes
 
 
 class Command(BaseCommand):
@@ -30,6 +30,12 @@ class Command(BaseCommand):
             portfolios = Portfolio.objects.all()
 
         benchmark_prices = get_benchmark_prices_usd(now.date())
+
+        all_symbols = set()
+        for p in portfolios:
+            all_symbols.update(p.holdings.keys())
+
+        quote_map = get_quotes(all_symbols)
 
         for p in portfolios:
             # 1) Adjust holdings for any splits in the last 24 hours
@@ -60,9 +66,18 @@ class Command(BaseCommand):
                     if div_series is not None and not div_series.empty:
                         for ex_date, div_amount in div_series.items():
                             if ex_date.date() >= since_date:
-                                quote = get_quote(symbol)
+                                quote = quote_map.get(symbol) or get_quote(symbol)
                                 fx_rate = Decimal(str(quote["fx_rate"]))
-                                credit = Decimal(str(div_amount)) * Decimal(str(qty)) * fx_rate
+
+                                # Dividends for GBp tickers are also reported in pence
+                                div_multiplier = Decimal("0.01") if quote.get("native_currency") == "GBp" else Decimal("1")
+
+                                credit = (
+                                    Decimal(str(div_amount))
+                                    * div_multiplier
+                                    * Decimal(str(qty))
+                                    * fx_rate
+                                )
                                 total_dividend_credit += credit
                                 self.stdout.write(
                                     f"➕ Credited {symbol} dividend ${credit:.2f} to Portfolio {p.pk} "
@@ -79,7 +94,7 @@ class Command(BaseCommand):
             total_value = p.cash_balance
             for symbol, qty in p.holdings.items():
                 try:
-                    quote = get_quote(symbol)
+                    quote = quote_map.get(symbol) or get_quote(symbol)
                     fx_rate = Decimal(str(quote["fx_rate"]))
                     mid_local = Decimal(str(quote["price"]))
                     total_value += mid_local * fx_rate * Decimal(str(qty))
