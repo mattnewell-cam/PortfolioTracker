@@ -62,23 +62,15 @@ def build_currency_map(symbols):
     return currency_map
 
 
-def build_price_map(symbols, snap_date, currency_map):
-    if not symbols:
+def build_price_map(symbols, snap_date, currency_map, price_hist):
+    if not symbols or price_hist is None or price_hist.empty:
         return {}
 
-    price_hist = yf.download(
-        symbols,
-        start=(snap_date - timedelta(days=7)).isoformat(),
-        end=(snap_date + timedelta(days=1)).isoformat(),
-        interval="1d",
-        group_by="ticker",
-        progress=False,
-    )
-
     price_map = {}
+    symbol_count = len(symbols)
     for symbol in symbols:
         try:
-            close_series = _get_close_series(price_hist, symbol, len(symbols))
+            close_series = _get_close_series(price_hist, symbol, symbol_count)
             if close_series is None:
                 continue
 
@@ -97,20 +89,11 @@ def build_price_map(symbols, snap_date, currency_map):
     return price_map
 
 
-def build_fx_map(currencies, snap_date):
-    if not currencies:
+def build_fx_map(currencies, snap_date, fx_hist):
+    if not currencies or fx_hist is None or fx_hist.empty:
         return {}
 
     fx_symbols = [f"{currency}USD=X" for currency in currencies if currency]
-    fx_hist = yf.download(
-        fx_symbols,
-        start=(snap_date - timedelta(days=7)).isoformat(),
-        end=(snap_date + timedelta(days=1)).isoformat(),
-        interval="1d",
-        group_by="ticker",
-        progress=False,
-    )
-
     fx_map = {}
     for currency in currencies:
         try:
@@ -138,6 +121,37 @@ currency_map = build_currency_map(all_symbols)
 fx_currency_map = {symbol: ("GBP" if currency_map.get(symbol) == "GBp" else currency_map.get(symbol, "USD")) for symbol in all_symbols}
 fx_currencies = {currency for currency in fx_currency_map.values() if currency and currency != "USD"}
 
+start_date = today - timedelta(days=21)
+end_date = today + timedelta(days=1)
+
+symbols_list = list(all_symbols)
+price_hist = (
+    yf.download(
+        symbols_list,
+        start=start_date.isoformat(),
+        end=end_date.isoformat(),
+        interval="1d",
+        group_by="ticker",
+        progress=False,
+    )
+    if symbols_list
+    else None
+)
+
+fx_symbols = [f"{currency}USD=X" for currency in fx_currencies if currency]
+fx_hist = (
+    yf.download(
+        fx_symbols,
+        start=start_date.isoformat(),
+        end=end_date.isoformat(),
+        interval="1d",
+        group_by="ticker",
+        progress=False,
+    )
+    if fx_symbols
+    else None
+)
+
 for p in portfolios:
     print(f"→ Processing Portfolio {p.pk}")
     for days_ago in range(14, 0, -1):
@@ -149,8 +163,8 @@ for p in portfolios:
         if snap_date.weekday() > 4:  # Don't create snapshot for weekends
             continue
 
-        price_map = build_price_map(all_symbols, snap_date, currency_map)
-        fx_map = build_fx_map(fx_currencies, snap_date)
+        price_map = build_price_map(all_symbols, snap_date, currency_map, price_hist)
+        fx_map = build_fx_map(fx_currencies, snap_date, fx_hist)
 
         total_value = p.cash_balance
         for symbol, qty in p.holdings.items():
