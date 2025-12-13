@@ -15,15 +15,130 @@ print("    Using DATABASES:", settings.DATABASES)
 # 2) Now the rest of your code:
 from django.utils import timezone
 from datetime import timedelta
-import yfinance as yf
 from decimal import Decimal
+
+import pandas as pd
+import yfinance as yf
 
 from portfolios.models import Portfolio, PortfolioSnapshot
 from portfolios.benchmarks import get_benchmark_prices_usd
 
 today = timezone.now().date()
 
-for p in Portfolio.objects.all():
+
+def _get_close_series(hist_df, symbol, symbol_count):
+    if hist_df is None or hist_df.empty:
+        return None
+
+    if isinstance(hist_df.columns, pd.MultiIndex):
+        if symbol in hist_df.columns.get_level_values(0):
+            try:
+                return hist_df[symbol]["Close"]
+            except KeyError:
+                return None
+    elif symbol_count == 1 and "Close" in hist_df.columns:
+        return hist_df["Close"]
+
+    return None
+
+
+def build_currency_map(symbols):
+    if not symbols:
+        return {}
+
+    tickers = yf.Tickers(" ".join(symbols))
+    currency_map = {}
+    for symbol in symbols:
+        try:
+            info = tickers.tickers.get(symbol)
+            currency = None
+            if info is not None:
+                fast_info = getattr(info, "fast_info", {})
+                currency = fast_info.get("currency") if hasattr(fast_info, "get") else None
+            currency_map[symbol] = currency or "USD"
+        except Exception:
+            currency_map[symbol] = "USD"
+
+    return currency_map
+
+
+def build_price_map(symbols, snap_date, currency_map):
+    if not symbols:
+        return {}
+
+    price_hist = yf.download(
+        symbols,
+        start=(snap_date - timedelta(days=7)).isoformat(),
+        end=(snap_date + timedelta(days=1)).isoformat(),
+        interval="1d",
+        group_by="ticker",
+        progress=False,
+    )
+
+    price_map = {}
+    for symbol in symbols:
+        try:
+            close_series = _get_close_series(price_hist, symbol, len(symbols))
+            if close_series is None:
+                continue
+
+            close_series = close_series[close_series.index.date <= snap_date]
+            if close_series.empty:
+                continue
+
+            close_local = Decimal(str(close_series.iloc[-1]))
+            if currency_map.get(symbol) == "GBp":
+                close_local = close_local / Decimal("100")
+
+            price_map[symbol] = close_local
+        except Exception:
+            continue
+
+    return price_map
+
+
+def build_fx_map(currencies, snap_date):
+    if not currencies:
+        return {}
+
+    fx_symbols = [f"{currency}USD=X" for currency in currencies if currency]
+    fx_hist = yf.download(
+        fx_symbols,
+        start=(snap_date - timedelta(days=7)).isoformat(),
+        end=(snap_date + timedelta(days=1)).isoformat(),
+        interval="1d",
+        group_by="ticker",
+        progress=False,
+    )
+
+    fx_map = {}
+    for currency in currencies:
+        try:
+            close_series = _get_close_series(fx_hist, f"{currency}USD=X", len(fx_symbols))
+            if close_series is None:
+                continue
+
+            close_series = close_series[close_series.index.date <= snap_date]
+            if close_series.empty:
+                continue
+
+            fx_map[currency] = Decimal(str(close_series.iloc[-1]))
+        except Exception:
+            continue
+
+    return fx_map
+
+
+portfolios = list(Portfolio.objects.all())
+all_symbols = set()
+for p in portfolios:
+    all_symbols.update(p.holdings.keys())
+
+currency_map = build_currency_map(all_symbols)
+fx_currency_map = {symbol: ("GBP" if currency_map.get(symbol) == "GBp" else currency_map.get(symbol, "USD")) for symbol in all_symbols}
+fx_currencies = {currency for currency in fx_currency_map.values() if currency and currency != "USD"}
+
+for p in portfolios:
     print(f"→ Processing Portfolio {p.pk}")
     for days_ago in range(14, 0, -1):
         snap_date = today - timedelta(days=days_ago)
@@ -34,61 +149,18 @@ for p in Portfolio.objects.all():
         if snap_date.weekday() > 4:  # Don't create snapshot for weekends
             continue
 
+        price_map = build_price_map(all_symbols, snap_date, currency_map)
+        fx_map = build_fx_map(fx_currencies, snap_date)
+
         total_value = p.cash_balance
         for symbol, qty in p.holdings.items():
             try:
-                # 1) Attempt to fetch exactly snap_date → snap_date+1
-                one_day_hist = yf.Ticker(symbol).history(
-                    start=snap_date.isoformat(),
-                    end=(snap_date + timedelta(days=1)).isoformat(),
-                    interval="1d",
-                )
+                close_local = price_map.get(symbol)
+                if close_local is None:
+                    continue
 
-                if not one_day_hist.empty:
-                    # We have a row for snap_date
-                    close_local = Decimal(str(one_day_hist["Close"].iloc[0]))
-                else:
-                    # 2) Market was closed on snap_date: fetch up to 7 days before snap_date
-                    week_hist = yf.Ticker(symbol).history(
-                        start=(snap_date - timedelta(days=7)).isoformat(),
-                        end=(snap_date + timedelta(days=1)).isoformat(),
-                        interval="1d",
-                    )
-                    # Filter to rows with date ≤ snap_date, then take the last closing price
-                    week_hist = week_hist[week_hist.index.date <= snap_date]
-                    if week_hist.empty:
-                        # Still no data (e.g. impossible symbol, or more than 7 days back has no data)
-                        continue
-                    close_local = Decimal(str(week_hist["Close"].iloc[-1]))
-
-                # 3) Determine FX rate (if needed)
-                ticker = yf.Ticker(symbol)
-                currency = ticker.fast_info.get("currency", "USD")
-                fx_currency = "GBP" if currency == "GBp" else currency
-
-                if fx_currency and fx_currency.upper() != "USD":
-                    fx_tkr = yf.Ticker(f"{fx_currency}USD=X")
-                    fx_hist = fx_tkr.history(
-                        start=snap_date.isoformat(),
-                        end=(snap_date + timedelta(days=1)).isoformat(),
-                        interval="1d",
-                    )
-                    if not fx_hist.empty:
-                        fx_rate = Decimal(str(fx_hist["Close"].iloc[0]))
-                    else:
-                        # If FX data is missing for snap_date, fall back a few days as well:
-                        fx_hist = fx_tkr.history(
-                            start=(snap_date - timedelta(days=7)).isoformat(),
-                            end=(snap_date + timedelta(days=1)).isoformat(),
-                            interval="1d",
-                        )
-                        fx_hist = fx_hist[fx_hist.index.date <= snap_date]
-                        fx_rate = Decimal(str(fx_hist["Close"].iloc[-1])) if not fx_hist.empty else Decimal("1.0")
-                else:
-                    fx_rate = Decimal("1.0")
-
-                if currency == "GBp":
-                    close_local = close_local / Decimal("100")
+                fx_currency = fx_currency_map.get(symbol, "USD")
+                fx_rate = fx_map.get(fx_currency, Decimal("1.0")) if fx_currency != "USD" else Decimal("1.0")
 
                 total_value += close_local * fx_rate * Decimal(str(qty))
 
