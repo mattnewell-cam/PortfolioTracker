@@ -21,7 +21,7 @@ import pandas as pd
 import yfinance as yf
 
 from portfolios.models import Portfolio, PortfolioSnapshot
-from portfolios.benchmarks import get_benchmark_prices_usd
+from portfolios.constants import BENCHMARK_CHOICES
 
 today = timezone.now().date()
 
@@ -42,15 +42,15 @@ def _get_close_series(hist_df, symbol, symbol_count):
     return None
 
 
-def build_currency_map(symbols):
+def build_currency_map(symbols, tickers=None):
     if not symbols:
         return {}
 
-    tickers = yf.Tickers(" ".join(symbols))
+    tickers_obj = tickers or yf.Tickers(" ".join(symbols))
     currency_map = {}
     for symbol in symbols:
         try:
-            info = tickers.tickers.get(symbol)
+            info = tickers_obj.tickers.get(symbol)
             currency = None
             if info is not None:
                 fast_info = getattr(info, "fast_info", {})
@@ -69,13 +69,13 @@ def _series_by_date(close_series):
     return close_series.sort_index()
 
 
-def build_price_history_maps(symbols, currency_map, price_hist, target_dates):
+def build_price_history_maps(symbols, currency_map, price_hist, target_dates, total_symbol_count=None):
     if not symbols or price_hist is None or price_hist.empty:
         return {snap_date: {} for snap_date in target_dates}
 
     price_map_by_date = {snap_date: {} for snap_date in target_dates}
     sorted_dates = sorted(target_dates)
-    symbol_count = len(symbols)
+    symbol_count = total_symbol_count or len(symbols)
 
     for symbol in symbols:
         try:
@@ -103,17 +103,18 @@ def build_price_history_maps(symbols, currency_map, price_hist, target_dates):
     return price_map_by_date
 
 
-def build_fx_history_maps(currencies, fx_hist, target_dates):
+def build_fx_history_maps(currencies, fx_hist, target_dates, total_symbol_count=None):
     if not currencies or fx_hist is None or fx_hist.empty:
         return {snap_date: {} for snap_date in target_dates}
 
     fx_symbols = [f"{currency}USD=X" for currency in currencies if currency]
     fx_map_by_date = {snap_date: {} for snap_date in target_dates}
     sorted_dates = sorted(target_dates)
+    symbol_count = total_symbol_count or len(fx_symbols)
 
     for currency in currencies:
         try:
-            close_series = _get_close_series(fx_hist, f"{currency}USD=X", len(fx_symbols))
+            close_series = _get_close_series(fx_hist, f"{currency}USD=X", symbol_count)
             if close_series is None or close_series.empty:
                 continue
 
@@ -133,49 +134,94 @@ def build_fx_history_maps(currencies, fx_hist, target_dates):
     return fx_map_by_date
 
 
+def build_benchmark_price_maps(benchmark_symbols, currency_map, price_hist, fx_map_by_date, target_dates, total_symbol_count=None):
+    if not benchmark_symbols:
+        return {snap_date: {} for snap_date in target_dates}
+
+    price_maps = build_price_history_maps(
+        benchmark_symbols,
+        currency_map,
+        price_hist,
+        target_dates,
+        total_symbol_count=total_symbol_count,
+    )
+
+    benchmark_maps = {snap_date: {} for snap_date in target_dates}
+
+    for snap_date in target_dates:
+        fx_map = fx_map_by_date.get(snap_date, {})
+        for symbol, close_local in price_maps.get(snap_date, {}).items():
+            fx_currency = currency_map.get(symbol, "USD")
+            if fx_currency == "GBp":
+                fx_currency = "GBP"
+
+            fx_rate = Decimal("1.0")
+            if fx_currency and fx_currency != "USD":
+                fx_rate = fx_map.get(fx_currency, Decimal("1.0"))
+
+            benchmark_maps[snap_date][symbol] = close_local * fx_rate
+
+    return benchmark_maps
+
+
 portfolios = list(Portfolio.objects.all())
 all_symbols = set()
 for p in portfolios:
     all_symbols.update(p.holdings.keys())
 
-currency_map = build_currency_map(all_symbols)
-fx_currency_map = {symbol: ("GBP" if currency_map.get(symbol) == "GBp" else currency_map.get(symbol, "USD")) for symbol in all_symbols}
+benchmark_symbols = [ticker for ticker, _ in BENCHMARK_CHOICES]
+all_requested_symbols = sorted(all_symbols.union(set(benchmark_symbols)))
+
+tickers = yf.Tickers(" ".join(all_requested_symbols)) if all_requested_symbols else None
+currency_map = build_currency_map(all_requested_symbols, tickers=tickers)
+
+fx_currency_map = {
+    symbol: ("GBP" if currency_map.get(symbol) == "GBp" else currency_map.get(symbol, "USD"))
+    for symbol in all_requested_symbols
+}
 fx_currencies = {currency for currency in fx_currency_map.values() if currency and currency != "USD"}
 
 start_date = today - timedelta(days=21)
 end_date = today + timedelta(days=1)
 
-symbols_list = list(all_symbols)
+fx_symbols = [f"{currency}USD=X" for currency in fx_currencies if currency]
+download_symbols = list(dict.fromkeys(all_requested_symbols + fx_symbols))
+
 price_hist = (
     yf.download(
-        symbols_list,
+        download_symbols,
         start=start_date.isoformat(),
         end=end_date.isoformat(),
         interval="1d",
         group_by="ticker",
         progress=False,
     )
-    if symbols_list
-    else None
-)
-
-fx_symbols = [f"{currency}USD=X" for currency in fx_currencies if currency]
-fx_hist = (
-    yf.download(
-        fx_symbols,
-        start=start_date.isoformat(),
-        end=end_date.isoformat(),
-        interval="1d",
-        group_by="ticker",
-        progress=False,
-    )
-    if fx_symbols
+    if download_symbols
     else None
 )
 
 snapshot_dates = [today - timedelta(days=days_ago) for days_ago in range(14, 0, -1) if (today - timedelta(days=days_ago)).weekday() <= 4]
-price_maps_by_date = build_price_history_maps(all_symbols, currency_map, price_hist, snapshot_dates)
-fx_maps_by_date = build_fx_history_maps(fx_currencies, fx_hist, snapshot_dates)
+price_maps_by_date = build_price_history_maps(
+    all_symbols,
+    currency_map,
+    price_hist,
+    snapshot_dates,
+    total_symbol_count=len(download_symbols),
+)
+fx_maps_by_date = build_fx_history_maps(
+    fx_currencies,
+    price_hist,
+    snapshot_dates,
+    total_symbol_count=len(download_symbols),
+)
+benchmark_price_maps_by_date = build_benchmark_price_maps(
+    benchmark_symbols,
+    currency_map,
+    price_hist,
+    fx_maps_by_date,
+    snapshot_dates,
+    total_symbol_count=len(download_symbols),
+)
 
 for p in portfolios:
     print(f"→ Processing Portfolio {p.pk}")
@@ -186,6 +232,7 @@ for p in portfolios:
 
         price_map = price_maps_by_date.get(snap_date, {})
         fx_map = fx_maps_by_date.get(snap_date, {})
+        benchmark_prices = benchmark_price_maps_by_date.get(snap_date, {})
 
         total_value = p.cash_balance
         for symbol, qty in p.holdings.items():
@@ -206,7 +253,6 @@ for p in portfolios:
 
         # Ensure stored value matches the ``DecimalField`` precision
         total_value = total_value.quantize(Decimal("0.01"))
-        benchmark_prices = get_benchmark_prices_usd(snap_date)
         PortfolioSnapshot.objects.update_or_create(
             portfolio=p,
             timestamp=snap_dt,
