@@ -64,9 +64,10 @@ for p in Portfolio.objects.all():
                 # 3) Determine FX rate (if needed)
                 ticker = yf.Ticker(symbol)
                 currency = ticker.fast_info.get("currency", "USD")
+                fx_currency = "GBP" if currency == "GBp" else currency
 
-                if currency.upper() not in ("USD", None):
-                    fx_tkr = yf.Ticker(f"{currency}USD=X")
+                if fx_currency and fx_currency.upper() != "USD":
+                    fx_tkr = yf.Ticker(f"{fx_currency}USD=X")
                     fx_hist = fx_tkr.history(
                         start=snap_date.isoformat(),
                         end=(snap_date + timedelta(days=1)).isoformat(),
@@ -85,6 +86,9 @@ for p in Portfolio.objects.all():
                         fx_rate = Decimal(str(fx_hist["Close"].iloc[-1])) if not fx_hist.empty else Decimal("1.0")
                 else:
                     fx_rate = Decimal("1.0")
+
+                if currency == "GBp":
+                    close_local = close_local / Decimal("100")
 
                 total_value += close_local * fx_rate * Decimal(str(qty))
 
