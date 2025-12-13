@@ -33,6 +33,7 @@ def _quote_from_info(symbol, info, fx_rate_cache=None):
         "ask": info.get("ask"),
         "traded_today": traded_today,
         "currency": fx_currency,
+        "native_currency": currency,
         "fx_rate": fx_rate,
         "market_state": info.get("marketState", None),
         "shortName": info.get("shortName"),

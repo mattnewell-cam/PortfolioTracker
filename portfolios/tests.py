@@ -645,3 +645,18 @@ class SnapshotAdjustmentTests(TestCase):
         self.assertEqual(self.portfolio.cash_balance, Decimal('3'))
         snapshot = PortfolioSnapshot.objects.get(portfolio=self.portfolio)
         self.assertEqual(snapshot.total_value, Decimal('23'))
+
+    def test_take_snapshots_converts_gbp_dividends_from_pence(self):
+        now = timezone.datetime(2024, 5, 1, tzinfo=pytz.UTC)
+        splits = pd.Series(dtype=float)
+        dividends = pd.Series({pd.Timestamp(now.date()): 150})
+        ticker = Mock(splits=splits, dividends=dividends)
+        quote = {'price': 10, 'fx_rate': 1, 'native_currency': 'GBp'}
+
+        self._run_command(ticker, quote, now)
+
+        self.portfolio.refresh_from_db()
+        # 150 pence dividend = £1.50 per share; holdings of 2 → £3.00 credited
+        self.assertEqual(self.portfolio.cash_balance, Decimal('3'))
+        snapshot = PortfolioSnapshot.objects.get(portfolio=self.portfolio)
+        self.assertEqual(snapshot.total_value, Decimal('23'))

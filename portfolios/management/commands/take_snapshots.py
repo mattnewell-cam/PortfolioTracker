@@ -68,7 +68,16 @@ class Command(BaseCommand):
                             if ex_date.date() >= since_date:
                                 quote = quote_map.get(symbol) or get_quote(symbol)
                                 fx_rate = Decimal(str(quote["fx_rate"]))
-                                credit = Decimal(str(div_amount)) * Decimal(str(qty)) * fx_rate
+
+                                # Dividends for GBp tickers are also reported in pence
+                                div_multiplier = Decimal("0.01") if quote.get("native_currency") == "GBp" else Decimal("1")
+
+                                credit = (
+                                    Decimal(str(div_amount))
+                                    * div_multiplier
+                                    * Decimal(str(qty))
+                                    * fx_rate
+                                )
                                 total_dividend_credit += credit
                                 self.stdout.write(
                                     f"➕ Credited {symbol} dividend ${credit:.2f} to Portfolio {p.pk} "
