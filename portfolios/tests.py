@@ -616,6 +616,7 @@ class SnapshotAdjustmentTests(TestCase):
     def _run_command(self, ticker, quote, now):
         with patch('portfolios.management.commands.take_snapshots.sys.exit'), \
              patch('portfolios.management.commands.take_snapshots.yf.Ticker', return_value=ticker), \
+             patch('portfolios.management.commands.take_snapshots.get_quotes', return_value={'AAPL': quote}), \
              patch('portfolios.management.commands.take_snapshots.get_quote', return_value=quote), \
              patch('portfolios.management.commands.take_snapshots.get_benchmark_prices_usd', return_value={}), \
              patch('portfolios.management.commands.take_snapshots.timezone.now', return_value=now):
