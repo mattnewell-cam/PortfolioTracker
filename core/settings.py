@@ -19,17 +19,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-# Use an environment variable with a sensible default for development.
-DEFAULT_SECRET_KEY = "django-insecure-change-me"
+import os
+from django.core.exceptions import ImproperlyConfigured
 
-# SECURITY WARNING: don't run with debug turned on in production!
-# Accept common truthy values for enabling debug mode via environment.
-DEBUG = os.getenv("DEBUG", "False").lower() in ("1", "true", "yes")
+DEBUG = os.getenv("DEBUG", "True").lower() in ("1", "true", "yes")
 
-SECRET_KEY = os.getenv("SECRET_KEY", DEFAULT_SECRET_KEY)
-if not DEBUG and SECRET_KEY == DEFAULT_SECRET_KEY:
-    raise ValueError("SECRET_KEY environment variable must be set when DEBUG is False.")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    if DEBUG:
+        # Dev-only fallback; set a real one in .env if you prefer stability.
+        SECRET_KEY = "django-insecure-dev-only-change-me"
+    else:
+        raise ImproperlyConfigured("SECRET_KEY must be set when DEBUG is False.")
 
 # Allow configuration of allowed hosts via environment variable, defaulting to
 # local development hosts.
