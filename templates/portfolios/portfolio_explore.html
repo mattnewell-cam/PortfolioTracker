@@ -2,30 +2,75 @@
 {% block title %}Find a Portfolio{% endblock %}
 
 {% block content %}
-<div class="px-3 py-3 px-lg-5 py-lg-5">
-  <h1 class="mb-4">Find a Portfolio</h1>
-  <form method="get" class="mb-4">
-    <div class="input-group">
-      <input type="text" name="q" class="form-control" placeholder="Search" value="{{ search_query }}">
-      <button class="btn btn-outline-secondary" type="submit">Search</button>
-    </div>
-  </form>
-
-  {% for p in portfolios %}
-    <div class="card mb-3" style="min-height: 4rem;">
-      <div class="card-body d-flex justify-content-between align-items-center">
-        <div>
-          <h5 class="card-title mb-1"><a href="{% url 'portfolios:portfolio-public-detail' p.pk %}">{{ p.name }}</a></h5>
-          <small class="text-muted">Created {{ p.created_at|date:"Y-m-d" }}</small>
+<div class="px-2 px-lg-4">
+  <div class="page-hero mb-4">
+    <div class="row align-items-center g-4">
+      <div class="col-lg-7">
+        <div class="eyebrow mb-2">Discover</div>
+        <h1 class="fw-bold mb-3">Community intelligence at a glance</h1>
+        <p class="kicker mb-4">Browse transparent, community-built model portfolios. See how they are positioned and find inspiration for your own investing.</p>
+        <div class="d-flex flex-wrap gap-2">
+          <span class="badge-soft">Curated picks</span>
+          <span class="badge-soft">Live valuations</span>
+          <span class="badge-soft">Benchmark ready</span>
         </div>
-        <div class="text-end">
-          <div class="text-muted">Total Value</div>
-          <div class="fw-bold">${{ p.total_value_cached|floatformat:2 }}</div>
+      </div>
+      <div class="col-lg-5">
+        <div class="card card-elevated h-100">
+          <div class="card-body">
+            <h5 class="mb-3">Search portfolios</h5>
+            <form method="get">
+              <div class="input-group mb-3">
+                <input type="text" name="q" class="form-control" placeholder="Find by name" value="{{ search_query }}">
+                <button class="btn btn-primary" type="submit">Search</button>
+              </div>
+              <p class="text-muted small mb-0">Tip: try themes like "dividend" or "tech" to explore different angles.</p>
+            </form>
+          </div>
         </div>
       </div>
     </div>
-  {% empty %}
-    <p class="text-muted">No portfolios found.</p>
-  {% endfor %}
+  </div>
+
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div class="section-heading"><span class="dot"></span> Featured community portfolios</div>
+    <div class="text-muted small">Sorted by most recent performance snapshot</div>
+  </div>
+
+  <div class="row g-3 g-lg-4">
+    {% for p in portfolios %}
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card card-elevated portfolio-card h-100">
+          <div class="card-body d-flex flex-column gap-3">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <h5 class="fw-semibold mb-1"><a href="{% url 'portfolios:portfolio-public-detail' p.pk %}">{{ p.name }}</a></h5>
+                {% if p.short_description %}
+                  <div class="text-muted small">{{ p.short_description }}</div>
+                {% else %}
+                  <div class="text-muted small">Curated by the community</div>
+                {% endif %}
+              </div>
+              <span class="chip">${{ p.total_value_cached|floatformat:0 }}</span>
+            </div>
+            <div class="d-flex flex-wrap gap-3">
+              <div>
+                <div class="muted-label">Created</div>
+                <div class="fw-semibold">{{ p.created_at|date:"M d, Y" }}</div>
+              </div>
+              <div>
+                <div class="muted-label">Status</div>
+                <div class="fw-semibold">Live</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <div class="col-12">
+        <div class="card card-ghost p-4 text-center">No portfolios found. Try a broader search term.</div>
+      </div>
+    {% endfor %}
+  </div>
 </div>
-  {% endblock %}
+{% endblock %}

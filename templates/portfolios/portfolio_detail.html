@@ -3,210 +3,142 @@
 {% block title %}{{ portfolio.name }}{% endblock %}
 
 {% block content %}
-<div class="px-3 py-3 px-lg-5 py-lg-5">
-  <div class="d-flex align-items-center mb-4">
-    <div class="me-auto">
-      <h1 class="mb-0">{{ portfolio.name }}</h1>
-      {% if portfolio.short_description %}
-        <p class="text-muted mt-2 mb-0" style="font-size: 18px" ><i>"{{ portfolio.short_description }}"</i></p>
-      {% endif %}
-    </div>
-    {% if is_owner %}
-      <div class="d-flex flex-column align-items-end ms-3">
-        <form method="post" action="{% url 'portfolios:portfolio-toggle-privacy' %}" class="mb-2">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-outline-primary text-nowrap px-4" style="min-width: 9rem;">
-            {% if portfolio.is_private %}
-              Make Public
-            {% else %}
-              Make Private
-            {% endif %}
-          </button>
-        </form>
-        {% if portfolio.is_private %}
-          <a class="btn btn-outline-primary text-nowrap px-4" href="{% url 'portfolios:portfolio-allow-list' %}" style="min-width: 9rem;">Allow List ({{ allowed_count }})</a>
+<div class="px-2 px-lg-4">
+  <div class="page-hero mb-4">
+    <div class="d-flex flex-wrap align-items-start gap-3">
+      <div class="flex-grow-1">
+        <div class="eyebrow mb-2">Portfolio</div>
+        <div class="d-flex align-items-center flex-wrap gap-2">
+          <h1 class="mb-0">{{ portfolio.name }}</h1>
+          <span class="chip">
+            {% if portfolio.is_private %}Private{% else %}Public{% endif %}
+          </span>
+        </div>
+        {% if portfolio.short_description %}
+          <p class="kicker mt-2 mb-0">{{ portfolio.short_description }}</p>
         {% endif %}
       </div>
-    {% endif %}
+      <div class="d-flex flex-column align-items-end gap-2 ms-auto">
+        {% if is_owner %}
+          <form method="post" action="{% url 'portfolios:portfolio-toggle-privacy' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-primary text-nowrap px-4">
+              {% if portfolio.is_private %}
+                Make Public
+              {% else %}
+                Make Private
+              {% endif %}
+            </button>
+          </form>
+          {% if portfolio.is_private %}
+            <a class="btn btn-outline-primary text-nowrap px-4" href="{% url 'portfolios:portfolio-allow-list' %}">Allow List ({{ allowed_count }})</a>
+          {% endif %}
+        {% else %}
+          {% if not portfolio.is_private or is_allowed %}
+            {% if user.is_authenticated %}
+              <form method="post" action="{% url 'portfolios:portfolio-follow-toggle' portfolio.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary px-4">
+                  {% if is_following %}Unfollow Portfolio{% else %}Follow Portfolio{% endif %}
+                </button>
+              </form>
+            {% else %}
+              <a class="btn btn-primary px-4" href="{% url 'login' %}?next={{ request.path }}">Follow Portfolio</a>
+            {% endif %}
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="row g-3 mt-3">
+      <div class="col-12 col-md-4">
+        <div class="stat-card">
+          <div class="muted-label mb-1">Total value</div>
+          <div class="value">${{ total_value|floatformat:2 }}</div>
+        </div>
+      </div>
+      <div class="col-12 col-md-4">
+        <div class="stat-card">
+          <div class="muted-label mb-1">Cash available</div>
+          <div class="value">${{ portfolio.cash_balance|floatformat:2 }}</div>
+        </div>
+      </div>
+      <div class="col-12 col-md-4">
+        <div class="stat-card">
+          <div class="muted-label mb-1">Holdings tracked</div>
+          <div class="value">{{ positions|length }}</div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  {% if not is_owner %}
-    {% if not portfolio.is_private or is_allowed %}
-      {% if user.is_authenticated %}
-        <form method="post" action="{% url 'portfolios:portfolio-follow-toggle' portfolio.pk %}" class="mb-3">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-primary">
-            {% if is_following %}Unfollow Portfolio{% else %}Follow Portfolio{% endif %}
-          </button>
-        </form>
-      {% else %}
-        <p class="mb-3">
-          <a class="btn btn-primary" href="{% url 'login' %}?next={{ request.path }}">Follow Portfolio</a>
-        </p>
-      {% endif %}
-    {% endif %}
-  {% endif %}
-
   {% if private_view %}
-    <p class="text-muted"><em>This portfolio is private. Only the value chart is visible.</em></p>
+    <div class="alert alert-info card-elevated">This portfolio is private. Only the value chart is visible.</div>
   {% endif %}
 
   {% if not private_view %}
-  <div class="card mb-4">
+  <div class="card card-elevated mb-4">
     <div class="card-body">
-      <div class="d-flex align-items-stretch">
-        <div class="me-4 d-flex flex-column justify-content-between">
-          <h2 class="h5">Buy or Sell Shares</h2>
-          <p class="mb-0">
-            <strong>Cash Balance:</strong>
-            ${{ portfolio.cash_balance|floatformat:2 }}
-          </p>
-        </div>
+      <div class="d-flex align-items-center mb-3">
+        <div class="section-heading mb-0"><span class="dot"></span> Buy or Sell Shares</div>
+        <div class="ms-auto text-muted">Cash balance: ${{ portfolio.cash_balance|floatformat:2 }}</div>
+      </div>
 
-        {% if is_owner %}
-        <form method="post" action="{% url 'portfolios:order-create' %}" class="d-flex flex-grow-1 align-items-stretch" id="orderForm">
-          {% csrf_token %}
-          <input type="hidden" name="symbol" id="id_symbol" required>
+      {% if is_owner %}
+      <form method="post" action="{% url 'portfolios:order-create' %}" class="d-flex flex-grow-1 align-items-stretch" id="orderForm">
+        {% csrf_token %}
+        <input type="hidden" name="symbol" id="id_symbol" required>
 
-          <div class="d-flex flex-grow-1 align-items-center">
-            <div class="row g-3 w-100 align-items-start">
-              <div class="col-12 col-lg-6">
-                <div id="tickerSearch" class="input-group">
-                  <input class="form-control" id="tickerLookupInput" placeholder="Enter ticker..." aria-label="Enter ticker">
-                  <button class="btn btn-primary" type="button" id="tickerLookupButton">Find</button>
-                </div>
-
-                <div id="tickerInfo" class="d-none border rounded p-3 bg-light">
-                  <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                      <div class="text-muted small text-uppercase">Company</div>
-                      <div class="fw-semibold" id="tickerCompany"></div>
-                      <div class="text-muted" id="tickerSymbol"></div>
-                    </div>
-                    <div class="text-end">
-                      <div class="text-muted small text-uppercase">Current Price</div>
-                      <div class="fw-semibold" id="tickerPrice"></div>
-                      <span class="badge" id="marketBadge"></span>
-                    </div>
-                  </div>
-                  <button type="button" class="btn btn-link p-0 mt-2" id="changeTickerButton">Change ticker</button>
-                </div>
-
-                <div id="tickerError" class="text-danger small mt-2"></div>
+        <div class="d-flex flex-grow-1 align-items-center">
+          <div class="row g-3 w-100 align-items-start">
+            <div class="col-12 col-lg-6">
+              <div id="tickerSearch" class="input-group">
+                <input class="form-control" id="tickerLookupInput" placeholder="Enter ticker..." aria-label="Enter ticker">
+                <button class="btn btn-primary" type="button" id="tickerLookupButton">Find</button>
               </div>
 
-              <div class="col-12 col-lg-6 d-none" id="orderDetails">
-                <div class="row g-2 align-items-center">
-                  <div class="col-12 col-sm-6">
-                    <input class="form-control"
-                           name="quantity" id="id_quantity" type="number" step="1" min="1"
-                           placeholder="Quantity" required disabled>
-                    <div class="form-text" id="orderAmount"></div>
+              <div id="tickerInfo" class="d-none border rounded p-3 bg-light">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <div class="text-muted small text-uppercase">Company</div>
+                    <div class="fw-semibold" id="tickerCompany"></div>
+                    <div class="text-muted" id="tickerSymbol"></div>
                   </div>
-                  <div class="col-12 col-sm-6 d-flex gap-2">
-                    <button type="submit" name="side" value="BUY"  class="btn btn-success h-100 fs-5 flex-grow-1 order-action-btn" disabled>Buy</button>
-                    <button type="submit" name="side" value="SELL" class="btn btn-danger  h-100 fs-5 flex-grow-1 order-action-btn" disabled>Sell</button>
+                  <div class="text-end">
+                    <div class="text-muted small text-uppercase">Current Price</div>
+                    <div class="fw-semibold" id="tickerPrice"></div>
+                    <span class="badge" id="marketBadge"></span>
                   </div>
+                </div>
+                <button type="button" class="btn btn-link p-0 mt-2" id="changeTickerButton">Change ticker</button>
+              </div>
+
+              <div id="tickerError" class="text-danger small mt-2"></div>
+            </div>
+
+            <div class="col-12 col-lg-6 d-none" id="orderDetails">
+              <div class="row g-2 align-items-center">
+                <div class="col-12 col-sm-6">
+                  <input class="form-control"
+                         name="quantity" id="id_quantity" type="number" step="1" min="1"
+                         placeholder="Quantity" required disabled>
+                  <div class="form-text" id="orderAmount"></div>
+                </div>
+                <div class="col-12 col-sm-6 d-flex gap-2">
+                  <button type="submit" name="side" value="BUY"  class="btn btn-success h-100 fs-5 flex-grow-1 order-action-btn" disabled>Buy</button>
+                  <button type="submit" name="side" value="SELL" class="btn btn-danger  h-100 fs-5 flex-grow-1 order-action-btn" disabled>Sell</button>
                 </div>
               </div>
             </div>
           </div>
-        </form>
-        {% endif %}
-
         </div>
-        {% if is_owner and order_form.non_field_errors %}
-        <div class="text-danger mt-2">{{ order_form.non_field_errors }}</div>
-        {% endif %}
-      </div>
-    </div>
+      </form>
+      {% endif %}
 
-  <!-- Current Holdings -->
-  <h2 class="h5 mb-3">Current Holdings</h2>
-  {% if positions %}
-    <div class="table-responsive mb-4">
-      <table class="table table-striped w-100">
-        <thead class="table-light">
-          <tr>
-            <th scope="col">Symbol</th>
-            <th scope="col">Quantity</th>
-            <th scope="col">Price (local)</th>
-            <th scope="col">FX Rate (→USD)</th>
-            <th scope="col">Value (USD)</th>
-            <th scope="col">Allocation</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for pos in positions %}
-            <tr>
-              <td>{{ pos.symbol }}</td>
-              <td>{{ pos.quantity }}</td>
-              <td>
-                {% if pos.mid_local is not None %}
-                  {{ pos.mid_local|floatformat:2 }} {{ pos.currency }}
-                {% else %}
-                  N/A
-                {% endif %}
-              </td>
-              <td>
-                {% if pos.fx_rate is not None %}
-                  1 {{ pos.currency }} = ${{ pos.fx_rate|floatformat:4 }}
-                {% else %}
-                  N/A
-                {% endif %}
-              </td>
-              <td>
-                {% if pos.value_usd is not None %}
-                  ${{ pos.value_usd|floatformat:2 }}
-                {% else %}
-                  N/A
-                {% endif %}
-              </td>
-              <td>
-                {% if pos.allocation is not None %}
-                  {{ pos.allocation|floatformat:2 }}%
-                {% else %}
-                  N/A
-                {% endif %}
-              </td>
-            </tr>
-          {% endfor %}
-          <tr>
-            <td>Cash</td>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td>${{ portfolio.cash_balance|floatformat:2 }}</td>
-            <td>{{ cash_allocation|floatformat:2 }}%</td>
-          </tr>
-          <tr class="table-light">
-            <td colspan="4"><strong>Total Value</strong></td>
-            <td><strong>${{ total_value|floatformat:2 }}</strong></td>
-            <td><strong>100%</strong></td>
-          </tr>
-        </tbody>
-      </table>
+      {% if is_owner and order_form.non_field_errors %}
+      <div class="text-danger mt-2">{{ order_form.non_field_errors }}</div>
+      {% endif %}
     </div>
-  {% else %}
-    <p class="text-muted"><em>No holdings in this portfolio yet.</em></p>
-  {% endif %}
-  {% endif %}
-
-  <!-- Value Over Time -->
-  <h2 class="h5 mb-3">Value Over Time</h2>
-  <div class="d-flex align-items-center mb-2">
-    <div class="btn-group btn-group-sm" role="group" id="rangeButtons">
-      <button type="button" class="btn btn-outline-primary active" data-range="max">Max</button>
-      <button type="button" class="btn btn-outline-primary" data-range="5y">5Y</button>
-      <button type="button" class="btn btn-outline-primary" data-range="1y">1Y</button>
-      <button type="button" class="btn btn-outline-primary" data-range="ytd">YTD</button>
-      <button type="button" class="btn btn-outline-primary" data-range="6m">6M</button>
-      <button type="button" class="btn btn-outline-primary" data-range="1m">1M</button>
-    </div>
-    <div id="returnSummary" class="ms-auto small text-end"></div>
-  </div>
-  <div class="mb-4">
-    <canvas id="historyChart" style="max-width:100%; height:auto;"></canvas>
   </div>
 
   {% if is_owner %}
@@ -361,87 +293,183 @@
   </script>
   {% endif %}
 
-  <div class="mb-4">
-    <div class="dropdown">
-      <button class="btn btn-secondary dropdown-toggle" type="button" id="benchmarkDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-        Select Benchmarks
-      </button>
-      <div class="dropdown-menu p-2" aria-labelledby="benchmarkDropdown">
-        {% for bm in benchmark_data %}
-          <div class="form-check">
-            <input
-              class="form-check-input benchmark-option"
-              type="checkbox"
-              id="bmOption{{ forloop.counter0 }}"
-              data-index="{{ forloop.counter0 }}"
-              {% if bm.ticker in default_benchmarks %}checked{% endif %}
-            />
-            <label class="form-check-label {% if bm.ticker in default_benchmarks %}fw-bold{% endif %}" for="bmOption{{ forloop.counter0 }}">
-              {{ bm.label }}
-            </label>
+  <!-- Current Holdings -->
+  <div class="card card-elevated mb-4">
+    <div class="card-header section-heading mb-0"><span class="dot"></span> Current Holdings</div>
+    <div class="card-body">
+      {% if positions %}
+        <div class="table-responsive mb-2">
+          <table class="table table-striped w-100">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">Symbol</th>
+                <th scope="col">Quantity</th>
+                <th scope="col">Price (local)</th>
+                <th scope="col">FX Rate (→USD)</th>
+                <th scope="col">Value (USD)</th>
+                <th scope="col">Allocation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for pos in positions %}
+                <tr>
+                  <td>{{ pos.symbol }}</td>
+                  <td>{{ pos.quantity }}</td>
+                  <td>
+                    {% if pos.mid_local is not None %}
+                      {{ pos.mid_local|floatformat:2 }} {{ pos.currency }}
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if pos.fx_rate is not None %}
+                      1 {{ pos.currency }} = ${{ pos.fx_rate|floatformat:4 }}
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if pos.value_usd is not None %}
+                      ${{ pos.value_usd|floatformat:2 }}
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if pos.allocation is not None %}
+                      {{ pos.allocation|floatformat:2 }}%
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+              <tr>
+                <td>Cash</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td>${{ portfolio.cash_balance|floatformat:2 }}</td>
+                <td>{{ cash_allocation|floatformat:2 }}%</td>
+              </tr>
+              <tr class="table-light">
+                <td colspan="4"><strong>Total Value</strong></td>
+                <td><strong>${{ total_value|floatformat:2 }}</strong></td>
+                <td><strong>100%</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="text-muted mb-0"><em>No holdings in this portfolio yet.</em></p>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Value Over Time -->
+  <div class="card card-elevated mb-4">
+    <div class="card-body">
+      <div class="d-flex align-items-center mb-3 flex-wrap gap-2">
+        <div class="section-heading mb-0"><span class="dot"></span> Value Over Time</div>
+        <div class="btn-group btn-group-sm ms-auto range-pill" role="group" id="rangeButtons">
+          <button type="button" class="btn btn-outline-primary active" data-range="max">Max</button>
+          <button type="button" class="btn btn-outline-primary" data-range="5y">5Y</button>
+          <button type="button" class="btn btn-outline-primary" data-range="1y">1Y</button>
+          <button type="button" class="btn btn-outline-primary" data-range="ytd">YTD</button>
+          <button type="button" class="btn btn-outline-primary" data-range="6m">6M</button>
+          <button type="button" class="btn btn-outline-primary" data-range="1m">1M</button>
+        </div>
+      </div>
+      <div class="d-flex align-items-center mb-3 gap-3">
+        <div class="dropdown">
+          <button class="btn btn-outline-primary dropdown-toggle" type="button" id="benchmarkDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+            Select Benchmarks
+          </button>
+          <div class="dropdown-menu p-2" aria-labelledby="benchmarkDropdown">
+            {% for bm in benchmark_data %}
+              <div class="form-check">
+                <input
+                  class="form-check-input benchmark-option"
+                  type="checkbox"
+                  id="bmOption{{ forloop.counter0 }}"
+                  data-index="{{ forloop.counter0 }}"
+                  {% if bm.ticker in default_benchmarks %}checked{% endif %}
+                />
+                <label class="form-check-label {% if bm.ticker in default_benchmarks %}fw-bold{% endif %}" for="bmOption{{ forloop.counter0 }}">
+                  {{ bm.label }}
+                </label>
+              </div>
+            {% endfor %}
           </div>
-        {% endfor %}
+        </div>
+        <div id="returnSummary" class="small text-muted ms-auto text-end"></div>
+      </div>
+      <div class="chart-wrapper">
+        <canvas id="historyChart" style="max-width:100%; height:auto;"></canvas>
       </div>
     </div>
   </div>
 
-
   {% if not private_view %}
   <!-- Order History -->
-  <h2 class="h5 mb-3">Order History</h2>
-  {% if orders_data %}
-    <div class="table-responsive mb-4">
-      <table class="table table-striped table-sm w-100">
-        <thead class="table-light">
-          <tr>
-            <th scope="col">When</th>
-            <th scope="col">Symbol</th>
-            <th scope="col">Side</th>
-            <th scope="col">Qty</th>
-            <th scope="col">Price (Local)</th>
-            <th scope="col">FX Rate</th>
-            <th scope="col">Total Value (USD)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for o in orders_data %}
-            <tr>
-              <td>{{ o.executed_at|date:"Y-m-d H:i" }}</td>
-              <td>{{ o.symbol }}</td>
-              <td>{{ o.side }}</td>
-              <td>{{ o.quantity }}</td>
-              <td>
-                {% if o.price_local %}
-                  {{ o.price_local|floatformat:2 }} {{ o.currency }}
-                {% else %}
-                  N/A
-                {% endif %}
-              </td>
-              <td>
-                {% if o.fx_rate %}
-                  1 {{ o.currency }} = ${{ o.fx_rate|floatformat:4 }}
-                {% else %}
-                  N/A
-                {% endif %}
-              </td>
-              <td>
-                {% if o.total_value_usd %}
-                  ${{ o.total_value_usd|floatformat:2 }}
-                {% else %}
-                  N/A
-                {% endif %}
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+  <div class="card card-elevated mb-4">
+    <div class="card-header section-heading mb-0"><span class="dot"></span> Order History</div>
+    <div class="card-body">
+      {% if orders_data %}
+        <div class="table-responsive mb-2">
+          <table class="table table-striped table-sm w-100">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">When</th>
+                <th scope="col">Symbol</th>
+                <th scope="col">Side</th>
+                <th scope="col">Qty</th>
+                <th scope="col">Price (Local)</th>
+                <th scope="col">FX Rate</th>
+                <th scope="col">Total Value (USD)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for o in orders_data %}
+                <tr>
+                  <td>{{ o.executed_at|date:"Y-m-d H:i" }}</td>
+                  <td>{{ o.symbol }}</td>
+                  <td>{{ o.side }}</td>
+                  <td>{{ o.quantity }}</td>
+                  <td>
+                    {% if o.price_local %}
+                      {{ o.price_local|floatformat:2 }} {{ o.currency }}
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if o.fx_rate %}
+                      1 {{ o.currency }} = ${{ o.fx_rate|floatformat:4 }}
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if o.total_value_usd %}
+                      ${{ o.total_value_usd|floatformat:2 }}
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="text-muted mb-0"><em>No orders have been placed yet.</em></p>
+      {% endif %}
     </div>
-  {% else %}
-    <p class="text-muted"><em>No orders have been placed yet.</em></p>
+  </div>
   {% endif %}
-  {% endif %}
-
-
 </div>
 {% endblock %}
 
@@ -521,11 +549,13 @@
         return historyChart.data.datasets.slice(1).filter(ds => !ds.hidden).length;
       }
 
-      function computeReturn(arr) {
-        const first = arr.find(v => v !== null && v !== undefined);
-        const last = [...arr].reverse().find(v => v !== null && v !== undefined);
-        if (first === undefined || last === undefined || first === 0) return null;
-        return ((last - first) / first) * 100;
+      function computeReturn(array) {
+        const filtered = array.filter(v => v !== null && v !== undefined);
+        if (filtered.length < 2) return null;
+        const start = filtered[0];
+        const end = filtered[filtered.length - 1];
+        if (start === 0) return null;
+        return ((end - start) / start) * 100;
       }
 
       function updateReturnSummary() {
@@ -652,5 +682,3 @@
     });
   </script>
 {% endblock %}
-
-

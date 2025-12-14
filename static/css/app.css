@@ -1,0 +1,227 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --brand-primary: #0b6bcb;
+  --brand-accent: #0bc5ea;
+  --brand-muted: #6b7280;
+  --surface: #ffffff;
+  --surface-muted: #f5f7fb;
+  --radius-lg: 18px;
+  --shadow-soft: 0 8px 28px rgba(15, 55, 95, 0.12);
+}
+
+body.app-body {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: radial-gradient(circle at 20% 20%, rgba(11, 107, 203, 0.06), transparent 30%),
+              radial-gradient(circle at 80% 10%, rgba(11, 197, 234, 0.08), transparent 28%),
+              var(--surface-muted);
+  color: #0f172a;
+  min-height: 100vh;
+}
+
+a,
+.btn-link {
+  color: var(--brand-primary);
+}
+
+a:hover,
+.btn-link:hover {
+  color: #094f95;
+}
+
+.navbar-brand img {
+  height: 54px;
+}
+
+.navbar-custom {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 12px rgba(15, 55, 95, 0.08);
+}
+
+.navbar-custom .btn-primary,
+.btn-primary {
+  background: linear-gradient(120deg, var(--brand-primary), #094f95);
+  border: none;
+  box-shadow: 0 10px 30px rgba(9, 79, 149, 0.25);
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.btn-primary:hover,
+.navbar-custom .btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 34px rgba(9, 79, 149, 0.32);
+}
+
+.btn-outline-primary {
+  border-width: 1.5px;
+  color: var(--brand-primary);
+  border-color: rgba(11, 107, 203, 0.4);
+  background: rgba(11, 107, 203, 0.05);
+}
+
+.btn-outline-primary:hover {
+  color: #fff;
+  background: var(--brand-primary);
+}
+
+.btn-accent {
+  background: linear-gradient(120deg, var(--brand-accent), #33d6ff);
+  color: #0b2f46;
+  border: none;
+}
+
+.page-shell {
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
+
+.page-hero {
+  background: linear-gradient(120deg, #e9f2ff, #f8fbff);
+  border-radius: var(--radius-lg);
+  padding: 2.5rem 2rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: var(--shadow-soft);
+}
+
+.page-hero .eyebrow {
+  font-size: 0.9rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brand-primary);
+  font-weight: 700;
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.section-heading .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--brand-accent);
+}
+
+.card-elevated {
+  border: 1px solid #e5e7eb;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+}
+
+.card-elevated .card-header {
+  background: transparent;
+  border-bottom: 1px solid #eef2f6;
+  font-weight: 600;
+}
+
+.muted-label {
+  color: var(--brand-muted);
+  font-size: 0.95rem;
+}
+
+.stat-card {
+  background: #fff;
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.4rem;
+  border: 1px solid #e5e7eb;
+  box-shadow: var(--shadow-soft);
+}
+
+.stat-card .value {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.badge-soft {
+  background: rgba(11, 107, 203, 0.1);
+  color: #0f172a;
+  border-radius: 999px;
+  padding: 0.45rem 0.75rem;
+  font-weight: 600;
+}
+
+.portfolio-card h5 {
+  margin-bottom: 0.35rem;
+}
+
+.portfolio-card .meta {
+  font-size: 0.9rem;
+  color: var(--brand-muted);
+}
+
+.table thead th {
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+  background-color: rgba(11, 107, 203, 0.02);
+}
+
+.form-control,
+.input-group-text {
+  border-radius: 12px;
+  border-color: #d7deeb;
+}
+
+.input-group .btn {
+  border-radius: 12px;
+}
+
+.kicker {
+  color: var(--brand-muted);
+  font-size: 1rem;
+}
+
+.dropdown-menu {
+  border-radius: 14px;
+  border-color: #e2e8f0;
+  box-shadow: 0 12px 32px rgba(15, 55, 95, 0.12);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  padding: 0.45rem 0.75rem;
+  background: #eef4ff;
+  color: #0f172a;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.card-ghost {
+  border: 2px dashed #d4dbe8;
+  background: #f8fbff;
+  color: var(--brand-muted);
+  border-radius: var(--radius-lg);
+}
+
+.chart-wrapper {
+  background: #fff;
+  border-radius: var(--radius-lg);
+  border: 1px solid #e2e8f0;
+  box-shadow: var(--shadow-soft);
+  padding: 1.5rem;
+}
+
+.range-pill .btn {
+  border-radius: 10px !important;
+}
+
+.table > :not(caption) > * > * {
+  padding: 0.9rem 0.75rem;
+}
+
+@media (max-width: 767px) {
+  .page-hero {
+    padding: 1.75rem 1.25rem;
+  }
+}
