@@ -36,6 +36,7 @@ def register(request):
                 [form.cleaned_data["email"]],
                 fail_silently=True,
             )
+            print("Sending verification email.")
             return redirect("verify-email")
     else:
         form = EmailRegistrationForm()
