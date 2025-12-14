@@ -474,7 +474,7 @@ class FollowPortfolioTests(TestCase):
         )
 
     @patch('portfolios.views.get_quote')
-    @patch('portfolios.views.send_mail')
+    @patch('portfolios.views.send_email')
     def test_follower_notified_on_trade(self, mock_send, mock_quote):
         mock_quote.return_value = {
             'price': 100,
@@ -572,7 +572,7 @@ class AccountDetailsTests(TestCase):
         self.assertEqual(self.user.first_name, 'New')
         self.assertNotIn('pending_email_change', self.client.session)
 
-    @patch('portfolios.views.send_mail')
+    @patch('portfolios.views.send_email')
     def test_change_email_requires_verification(self, mock_send):
         response = self.client.post(
             reverse('portfolios:account-details'),
@@ -586,7 +586,7 @@ class AccountDetailsTests(TestCase):
             self.client.session['pending_email_change']['new_email'], 'new@example.com'
         )
 
-    @patch('portfolios.views.send_mail')
+    @patch('portfolios.views.send_email')
     def test_verify_email_change_updates_email(self, mock_send):
         self.client.post(
             reverse('portfolios:account-details'),

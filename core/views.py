@@ -7,11 +7,11 @@ from urllib.parse import urlparse, urlunparse
 from django.contrib import messages
 from django.contrib.auth import login, get_user_model
 from django.contrib.auth.decorators import login_required
-from django.core.mail import send_mail
 from django.shortcuts import render, redirect
 
 from portfolios.models import Portfolio
 
+from .email import send_email
 from .forms import (
     EmailRegistrationForm,
     EmailVerificationForm,
@@ -30,10 +30,9 @@ def register(request):
                 "password": form.cleaned_data["password1"],
                 "code": code,
             }
-            send_mail(
+            send_email(
                 "Verify your account",
                 f"Your verification code is {code}",
-                None,
                 [form.cleaned_data["email"]],
                 fail_silently=True,
             )

@@ -8,13 +8,13 @@ from django.views.generic import DetailView, CreateView, ListView
 from django.db.models import Q
 from django.core.serializers.json import DjangoJSONEncoder
 from django.utils import timezone
-from django.core.mail import send_mail
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from decimal import Decimal
 import random
 
 from core.yfinance_client import get_quote
+from core.email import send_email
 from .models import Portfolio, Order, PortfolioSnapshot, PortfolioFollower, PortfolioAllowedEmail
 from .constants import BENCHMARK_CHOICES
 from .forms import (
@@ -502,10 +502,9 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
             self.portfolio.followers.values_list("follower__email", flat=True)
         )
         if follower_emails:
-            send_mail(
+            send_email(
                 f"New trade in {self.portfolio.name}",
                 f"{self.portfolio.user.username} executed {side} {quantity} {symbol} at {execution_price} {currency}",
-                None,
                 follower_emails,
                 fail_silently=True,
             )
@@ -576,10 +575,9 @@ def account_details(request):
                     "new_email": new_email,
                     "code": code,
                 }
-                send_mail(
+                send_email(
                     "Verify your new email",
                     f"Your verification code is {code}",
-                    None,
                     [new_email],
                     fail_silently=True,
                 )
