@@ -209,6 +209,7 @@
     <canvas id="historyChart" style="max-width:100%; height:auto;"></canvas>
   </div>
 
+  {% if is_owner %}
   <script>
     (function() {
       const lookupButton = document.getElementById('tickerLookupButton');
@@ -358,6 +359,7 @@
       });
     })();
   </script>
+  {% endif %}
 
   <div class="mb-4">
     <div class="dropdown">
