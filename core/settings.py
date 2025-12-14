@@ -38,7 +38,8 @@ ALLOWED_HOSTS = os.getenv(
     "ALLOWED_HOSTS", "127.0.0.1,localhost"
 ).split(",")
 
-EMAIL_API_KEY = os.getenv("EMAIL_API_KEY", "")
+# EMAIL_API_KEY = os.getenv("EMAIL_API_KEY", "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")
+EMAIL_API_KEY = os.getenv("EMAIL_API_KEY", "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")
 EMAIL_SENDER = os.getenv("EMAIL_SENDER", "verify@trackstack.uk")
 DEFAULT_FROM_EMAIL = f"TrackStack <{EMAIL_SENDER}>"
 
