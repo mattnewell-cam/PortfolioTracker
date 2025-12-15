@@ -245,7 +245,7 @@
               {% for bm in benchmark_data %}
                 <label class="flex items-center gap-2 text-sm text-text">
                   <input type="checkbox" class="benchmark-toggle h-4 w-4 accent-brand" value="{{ forloop.counter0 }}" {% if bm.ticker in default_benchmarks %}checked{% endif %}>
-                  <span class="{% if bm.ticker in default_benchmarks %}font-semibold{% endif %}">{{ bm.label }} ({{ bm.ticker }})</span>
+                  <span class="{% if bm.ticker in default_benchmarks %}font-semibold{% else %}font-normal{% endif %}">{{ bm.label }} ({{ bm.ticker }})</span>
                 </label>
               {% endfor %}
             </div>
