@@ -428,6 +428,9 @@
       const benchmarkMenu = document.getElementById('benchmarkMenu');
       const benchmarkDropdown = document.getElementById('benchmarkDropdown');
       const maxBenchmarks = 3;
+      let selectedOrder = benchmarkCheckboxes
+        .filter(cb => cb.checked)
+        .map(cb => Number(cb.value));
 
       const closeBenchmarkMenu = () => benchmarkMenu.classList.add('hidden');
 
@@ -448,6 +451,26 @@
           .join('');
       };
 
+      const updateBenchmarkColors = () => {
+        const checkedSet = new Set(benchmarkCheckboxes.filter(cb => cb.checked).map(cb => Number(cb.value)));
+        selectedOrder = selectedOrder.filter(idx => checkedSet.has(idx));
+
+        historyChart.data.datasets.slice(1).forEach((dataset, datasetIdx) => {
+          const fallbackPalette = colorPool[datasetIdx % colorPool.length];
+          dataset.borderColor = fallbackPalette.border;
+          dataset.backgroundColor = fallbackPalette.background;
+        });
+
+        selectedOrder.forEach((bmIdx, orderIdx) => {
+          const palette = colorPool[orderIdx % colorPool.length];
+          const dataset = historyChart.data.datasets[bmIdx + 1];
+          if (dataset) {
+            dataset.borderColor = palette.border;
+            dataset.backgroundColor = palette.background;
+          }
+        });
+      };
+
       const applyCheckboxState = () => {
         const checkedBoxes = benchmarkCheckboxes.filter(cb => cb.checked);
         if (checkedBoxes.length > maxBenchmarks) {
@@ -460,15 +483,26 @@
             dataset.hidden = !checkbox.checked;
           }
         });
+        updateBenchmarkColors();
         historyChart.update();
         renderLegend();
       };
 
       benchmarkCheckboxes.forEach((checkbox) => {
         checkbox.addEventListener('change', () => {
+          const idx = Number(checkbox.value);
+          if (checkbox.checked) {
+            if (!selectedOrder.includes(idx)) {
+              selectedOrder.push(idx);
+            }
+          } else {
+            selectedOrder = selectedOrder.filter(entry => entry !== idx);
+          }
+
           const checkedCount = benchmarkCheckboxes.filter(cb => cb.checked).length;
           if (checkedCount > maxBenchmarks) {
             checkbox.checked = false;
+            selectedOrder = selectedOrder.filter(entry => entry !== idx);
             benchmarkError.textContent = 'You can select up to three benchmarks.';
             return;
           }
