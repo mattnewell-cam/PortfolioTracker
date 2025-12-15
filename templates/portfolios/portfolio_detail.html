@@ -502,7 +502,7 @@
       const orderAmount = document.getElementById('orderAmount');
       const lookupUrl = "{% url 'portfolios:quote-lookup' %}";
 
-      const usdFormatter = new Intl.NumberFormat(undefined, {
+      const orderUsdFormatter = new Intl.NumberFormat(undefined, {
         style: 'currency',
         currency: 'USD'
       });
@@ -561,7 +561,7 @@
 
         const totalLocal = qty * price;
         const totalUsd = totalLocal * fxRate;
-        orderAmount.textContent = `Order value: ${usdFormatter.format(totalUsd)}`;
+        orderAmount.textContent = `Order value: ${orderUsdFormatter.format(totalUsd)}`;
       };
 
       const showQuote = (data) => {
