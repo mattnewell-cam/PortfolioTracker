@@ -180,6 +180,7 @@ class PortfolioDetailView(LoginRequiredMixin, DetailView):
         ctx["is_owner"] = True
         ctx["private_view"] = False
         ctx["allowed_count"] = self.object.allowed_emails.count()
+        ctx["followers_count"] = self.object.followers.count()
         ctx["order_form"] = OrderForm()
         return ctx
 
@@ -216,6 +217,7 @@ class PublicPortfolioDetailView(DetailView):
         else:
             ctx["is_following"] = False
         ctx["allowed_count"] = self.object.allowed_emails.count()
+        ctx["followers_count"] = self.object.followers.count()
         return ctx
 
 

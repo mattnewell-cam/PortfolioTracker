@@ -6,14 +6,31 @@
 {% block content %}
 <div class="space-y-6">
   <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-    <div class="space-y-2">
-      <h1 class="text-3xl font-semibold">{{ portfolio.name }}</h1>
-      {% if portfolio.short_description %}
-        <p class="muted text-base italic">"{{ portfolio.short_description }}"</p>
-      {% endif %}
+    <div class="space-y-3">
+      <div class="space-y-2">
+        <h1 class="text-3xl font-semibold">{{ portfolio.name }}</h1>
+        {% if portfolio.short_description %}
+          <p class="muted text-base italic">"{{ portfolio.short_description }}"</p>
+        {% endif %}
+      </div>
+      <div class="flex flex-wrap items-center gap-4 text-sm text-muted">
+        <div class="flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 7.5 12 4.5l5.25 3m-10.5 3L12 7.5l5.25 3m-10.5 3L12 10.5l5.25 3M12 19.5v-9" />
+          </svg>
+          <span>Joined {{ portfolio.created_at|date:"d M Y" }}</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372A9.375 9.375 0 0 0 24 10.125 9.375 9.375 0 0 0 12.75.75a9.375 9.375 0 0 0-8.362 13.779c.058.112.097.234.113.36L5 22.5l4.225-2.112c.117-.059.242-.098.372-.113A9.325 9.325 0 0 0 12 20.25c1.062 0 2.089-.184 3.037-.522Z" />
+          </svg>
+          <span>{{ followers_count }} follower{{ followers_count|pluralize }}</span>
+        </div>
+      </div>
     </div>
-    {% if is_owner %}
-      <div class="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
+
+    <div class="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
+      {% if is_owner %}
         <form method="post" action="{% url 'portfolios:portfolio-toggle-privacy' %}">
           {% csrf_token %}
           <button type="submit" class="btn-secondary min-w-[9rem]">
@@ -27,26 +44,22 @@
         {% if portfolio.is_private %}
           <a class="btn-secondary min-w-[9rem]" href="{% url 'portfolios:portfolio-allow-list' %}">Allow List ({{ allowed_count }})</a>
         {% endif %}
-      </div>
-    {% endif %}
-  </div>
-
-  {% if not is_owner %}
-    {% if not portfolio.is_private or is_allowed %}
-      {% if user.is_authenticated %}
-        <form method="post" action="{% url 'portfolios:portfolio-follow-toggle' portfolio.pk %}">
-          {% csrf_token %}
-          <button type="submit" class="btn-primary">
-            {% if is_following %}Unfollow Portfolio{% else %}Follow Portfolio{% endif %}
-          </button>
-        </form>
       {% else %}
-        <p>
-          <a class="btn-primary" href="{% url 'login' %}?next={{ request.path }}">Follow Portfolio</a>
-        </p>
+        {% if not portfolio.is_private or is_allowed %}
+          {% if user.is_authenticated %}
+            <form method="post" action="{% url 'portfolios:portfolio-follow-toggle' portfolio.pk %}">
+              {% csrf_token %}
+              <button type="submit" class="btn-primary min-w-[9rem]">
+                {% if is_following %}Unfollow Portfolio{% else %}Follow Portfolio{% endif %}
+              </button>
+            </form>
+          {% else %}
+            <a class="btn-primary min-w-[9rem]" href="{% url 'login' %}?next={{ request.path }}">Follow Portfolio</a>
+          {% endif %}
+        {% endif %}
       {% endif %}
-    {% endif %}
-  {% endif %}
+    </div>
+  </div>
 
   {% if private_view %}
     <p class="muted italic">This portfolio is private. Only the value chart is visible.</p>
@@ -75,13 +88,21 @@
         <div id="orderLayout" class="hidden grid gap-4 lg:grid-cols-[2fr_1.2fr] lg:items-stretch">
           <div id="tickerInfo" class="hidden overflow-hidden rounded-xl border border-border bg-slate-50">
             <div class="flex h-full">
-              <div class="flex-1 space-y-2 px-4 py-3">
-                <div class="muted uppercase text-xs">Company</div>
-                <div class="text-base font-semibold" id="tickerCompany"></div>
-                <div class="muted" id="tickerSymbol"></div>
-                <div class="muted uppercase text-xs">Current Price</div>
-                <div class="text-base font-semibold" id="tickerPrice"></div>
-                <span class="badge" id="marketBadge"></span>
+              <div class="flex-1 space-y-4 px-4 py-3">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="space-y-1">
+                    <div class="muted uppercase text-xs">Company</div>
+                    <div class="text-base font-semibold" id="tickerCompany"></div>
+                  </div>
+                  <span class="badge" id="marketBadge"></span>
+                </div>
+                <div class="flex items-end justify-between gap-3">
+                  <div class="space-y-1">
+                    <div class="muted uppercase text-xs">Ticker</div>
+                    <div class="muted" id="tickerSymbol"></div>
+                  </div>
+                  <div class="text-lg font-semibold text-right" id="tickerPrice"></div>
+                </div>
               </div>
               <button type="button" class="w-[22%] min-w-[110px] max-w-[140px] bg-slate-200 px-4 text-sm font-semibold text-text transition-colors hover:bg-slate-300" id="changeTickerButton">Change ticker</button>
             </div>
@@ -167,7 +188,7 @@
                   </td>
                 </tr>
               {% endfor %}
-              <tr class="bg-slate-50">
+              <tr class="bg-slate-100">
                 <td class="table-td">Cash</td>
                 <td class="table-td"></td>
                 <td class="table-td"></td>
@@ -175,7 +196,7 @@
                 <td class="table-td text-right">${{ portfolio.cash_balance|floatformat:2|intcomma }}</td>
                 <td class="table-td text-right">{{ cash_allocation|floatformat:2|intcomma }}%</td>
               </tr>
-              <tr class="bg-slate-100">
+              <tr class="bg-slate-200">
                 <td class="table-td font-semibold" colspan="4">Total Value</td>
                 <td class="table-td font-semibold text-right">${{ total_value|floatformat:2|intcomma }}</td>
                 <td class="table-td font-semibold text-right">100%</td>
@@ -196,17 +217,9 @@
         <h2 class="section-title">Value Over Time</h2>
         <p class="muted">Track performance and compare benchmarks</p>
       </div>
-      <div class="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto">
-        <div class="flex flex-wrap items-center gap-3 sm:justify-end">
-          <div class="flex items-center gap-2">
-            <label for="benchmarkSelect" class="text-sm text-muted">Benchmarks</label>
-            <select id="benchmarkSelect" class="select h-9 w-48 text-sm">
-              <option value="">Toggle benchmark</option>
-              {% for bm in benchmark_data %}
-                <option value="{{ forloop.counter0 }}" data-ticker="{{ bm.ticker }}" {% if bm.ticker in default_benchmarks %}data-default="1"{% endif %}>{{ bm.label }} ({{ bm.ticker }})</option>
-              {% endfor %}
-            </select>
-          </div>
+      <div class="flex w-full flex-col gap-3 sm:ml-auto sm:w-auto">
+        <div class="flex items-center justify-between gap-3">
+          <div class="text-sm font-semibold text-text">Select up to three benchmarks</div>
           <div class="flex flex-wrap gap-2" id="rangeButtons">
             <button type="button" class="pill pill-active" data-range="max">Max</button>
             <button type="button" class="pill" data-range="5y">5Y</button>
@@ -215,15 +228,26 @@
             <button type="button" class="pill" data-range="6m">6M</button>
             <button type="button" class="pill" data-range="1m">1M</button>
           </div>
+        </div>
+        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2" id="benchmarkList">
+          {% for bm in benchmark_data %}
+            <label class="flex items-center gap-2 text-sm text-text">
+              <input type="checkbox" class="benchmark-toggle h-4 w-4 accent-brand" value="{{ forloop.counter0 }}" {% if bm.ticker in default_benchmarks %}checked{% endif %}>
+              <span class="{% if bm.ticker in default_benchmarks %}font-semibold{% endif %}">{{ bm.label }} ({{ bm.ticker }})</span>
+            </label>
+          {% endfor %}
+        </div>
+        <div id="benchmarkError" class="text-xs text-muted"></div>
+        <div class="flex flex-wrap items-center gap-3 sm:justify-end">
           <div id="returnSummary" class="text-right text-sm sm:text-base"></div>
         </div>
-        <div class="flex flex-wrap items-center gap-2 text-xs text-muted" id="activeBenchmarks"></div>
       </div>
     </div>
     <div class="card-content">
       <div class="h-64 sm:h-80">
         <canvas id="historyChart" class="h-full w-full"></canvas>
       </div>
+      <div id="chartLegend" class="mt-4 flex flex-wrap items-center gap-3 text-sm"></div>
     </div>
   </div>
 
@@ -377,7 +401,7 @@
             intersect: false,
           },
           plugins: {
-            legend: { position: 'bottom' },
+            legend: { display: false },
             tooltip: {
               callbacks: {
                 label: (ctx) => `${ctx.dataset.label}: ${usdFormatter.format(ctx.parsed.y)}`,
@@ -392,44 +416,59 @@
         }
       });
 
-      const benchmarkSelect = document.getElementById('benchmarkSelect');
-      const activeBenchmarks = document.getElementById('activeBenchmarks');
-      const defaultBenchmarkIndices = Array.from(benchmarkSelect.options)
-        .filter(opt => opt.dataset.default)
-        .map(opt => Number(opt.value))
-        .filter(idx => !Number.isNaN(idx));
+      const benchmarkCheckboxes = Array.from(document.querySelectorAll('.benchmark-toggle'));
+      const benchmarkError = document.getElementById('benchmarkError');
+      const chartLegend = document.getElementById('chartLegend');
+      const maxBenchmarks = 3;
 
-      const renderActiveBenchmarks = () => {
-        const active = benchmarkData
-          .map((bm, idx) => ({ ...bm, dataset: historyChart.data.datasets[idx + 1] }))
-          .filter(item => item.dataset && !item.dataset.hidden);
-
-        activeBenchmarks.innerHTML = active.length
-          ? active.map(item => `<span class="rounded-full bg-slate-100 px-3 py-1">${item.label}</span>`).join('')
-          : '<span class="muted">No benchmarks selected</span>';
-      };
-
-      const toggleBenchmark = (value) => {
-        if (value === '') return;
-        const idx = Number(value);
-        const dataset = historyChart.data.datasets[idx + 1];
-        if (!dataset) return;
-        dataset.hidden = !dataset.hidden;
-        historyChart.update();
-        renderActiveBenchmarks();
-        benchmarkSelect.value = '';
-      };
-
-      defaultBenchmarkIndices.forEach((idx) => {
-        const dataset = historyChart.data.datasets[idx + 1];
-        if (dataset) {
-          dataset.hidden = false;
+      const renderLegend = () => {
+        const visible = historyChart.data.datasets.filter(ds => !ds.hidden);
+        if (!visible.length) {
+          chartLegend.innerHTML = '<span class="text-xs text-muted">No series selected</span>';
+          return;
         }
-      });
-      historyChart.update();
-      renderActiveBenchmarks();
 
-      benchmarkSelect.addEventListener('change', () => toggleBenchmark(benchmarkSelect.value));
+        chartLegend.innerHTML = visible
+          .map(ds => `
+            <span class="flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold text-text">
+              <span class="h-3 w-3 rounded-sm" style="background-color:${ds.borderColor};"></span>
+              ${ds.label}
+            </span>
+          `)
+          .join('');
+      };
+
+      const applyCheckboxState = () => {
+        const checkedBoxes = benchmarkCheckboxes.filter(cb => cb.checked);
+        if (checkedBoxes.length > maxBenchmarks) {
+          checkedBoxes.slice(maxBenchmarks).forEach(cb => { cb.checked = false; });
+        }
+        benchmarkCheckboxes.forEach((checkbox) => {
+          const idx = Number(checkbox.value);
+          const dataset = historyChart.data.datasets[idx + 1];
+          if (dataset) {
+            dataset.hidden = !checkbox.checked;
+          }
+        });
+        historyChart.update();
+        renderLegend();
+      };
+
+      benchmarkCheckboxes.forEach((checkbox) => {
+        checkbox.addEventListener('change', () => {
+          const checkedCount = benchmarkCheckboxes.filter(cb => cb.checked).length;
+          if (checkedCount > maxBenchmarks) {
+            checkbox.checked = false;
+            benchmarkError.textContent = 'Select up to three benchmarks.';
+            return;
+          }
+          benchmarkError.textContent = 'Select up to three benchmarks';
+          applyCheckboxState();
+        });
+      });
+
+      benchmarkError.textContent = 'Select up to three benchmarks';
+      applyCheckboxState();
 
       function getRangeIndices(range) {
         const endIndex = fullLabels.length - 1;
