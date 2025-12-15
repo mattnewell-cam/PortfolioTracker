@@ -2,17 +2,19 @@
 {% block title %}Verify New Email{% endblock %}
 
 {% block content %}
-  <h1 class="mb-4">Verify New Email</h1>
-  <p>A code has been sent to {{ new_email }}. Enter it below to confirm the change.</p>
-  <form method="post">
-    {% csrf_token %}
-    <div class="mb-3">
-      <label for="{{ form.code.id_for_label }}" class="form-label">Verification Code</label>
-      {{ form.code }}
-      {% if form.code.errors %}
-        <div class="text-danger small">{{ form.code.errors|join:', ' }}</div>
-      {% endif %}
-    </div>
-    <button type="submit" class="btn btn-primary">Verify</button>
-  </form>
+  <div class="space-y-4 max-w-lg">
+    <h1 class="text-3xl font-semibold">Verify New Email</h1>
+    <p class="muted">A code has been sent to {{ new_email }}. Enter it below to confirm the change.</p>
+    <form method="post" class="space-y-4">
+      {% csrf_token %}
+      <div class="space-y-2">
+        <label for="{{ form.code.id_for_label }}" class="">Verification Code</label>
+        {{ form.code.as_widget(attrs={'class': 'input'}) }}
+        {% if form.code.errors %}
+          <div class="text-danger text-sm">{{ form.code.errors|join:', ' }}</div>
+        {% endif %}
+      </div>
+      <button type="submit" class="btn-primary">Verify</button>
+    </form>
+  </div>
 {% endblock %}

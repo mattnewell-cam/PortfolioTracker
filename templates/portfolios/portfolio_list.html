@@ -2,47 +2,43 @@
 {% block title %}Your Portfolios{% endblock %}
 
 {% block content %}
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Your Portfolios</h1>
-    <a class="btn btn-primary" href="{% url 'portfolios:portfolio-create' %}">
-      Create New Portfolio
-    </a>
-  </div>
+  <div class="space-y-6">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <h1 class="text-3xl font-semibold">Your Portfolios</h1>
+      <a class="btn-primary" href="{% url 'portfolios:portfolio-create' %}">Create New Portfolio</a>
+    </div>
 
-  <div class="table-responsive">
-    <table class="table table-striped w-100">
-      <thead class="table-light">
-        <tr>
-          <th scope="col">Name</th>
-          <th scope="col">Cash Balance</th>
-          <th scope="col">Created At</th>
-          <th scope="col"></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for p in portfolios %}
-          <tr>
-            <td>{{ p.name }}</td>
-            <td>${{ p.cash_balance|floatformat:2 }}</td>
-            <td>{{ p.created_at|date:"Y-m-d H:i" }}</td>
-            <td>
-              <a
-                class="btn btn-sm btn-outline-primary"
-                href="{% url 'portfolios:portfolio-detail' p.pk %}"
-              >
-                View
-              </a>
-            </td>
-          </tr>
-        {% empty %}
-          <tr>
-            <td colspan="4" class="text-center text-muted">
-              You have no portfolios yet.
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <div class="card">
+      <div class="card-content overflow-x-auto">
+        <table class="table w-full">
+          <thead>
+            <tr>
+              <th scope="col" class="table-th">Name</th>
+              <th scope="col" class="table-th">Cash Balance</th>
+              <th scope="col" class="table-th">Created At</th>
+              <th scope="col" class="table-th text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in portfolios %}
+              <tr>
+                <td class="table-td">{{ p.name }}</td>
+                <td class="table-td">${{ p.cash_balance|floatformat:2 }}</td>
+                <td class="table-td">{{ p.created_at|date:"Y-m-d H:i" }}</td>
+                <td class="table-td text-right">
+                  <a class="btn-secondary btn-sm" href="{% url 'portfolios:portfolio-detail' p.pk %}">View</a>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="4" class="table-td text-center text-muted">
+                  You have no portfolios yet.
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 {% endblock %}
-

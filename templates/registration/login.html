@@ -1,30 +1,28 @@
 {% extends "portfolios/base.html" %}
 {% block title %}Login{% endblock %}
 {% block content %}
-<div class="container my-5" style="max-width:420px;">
+<div class="mx-auto max-w-md">
   <div class="card shadow-sm">
-    <div class="card-body">
-      <h1 class="h4 mb-3">Sign in</h1>
+    <div class="card-content space-y-4">
+      <h1 class="text-2xl font-semibold">Sign in</h1>
       {% if form.errors %}
-        <div class="alert alert-danger">Please check your username/password.</div>
+        <div class="rounded-xl border border-danger/20 bg-red-50 px-4 py-3 text-danger text-sm">Please check your username/password.</div>
       {% endif %}
-      <form method="post" novalidate>
+      <form method="post" novalidate class="space-y-4">
         {% csrf_token %}
-        <div class="mb-3">
-          <label for="{{ form.username.id_for_label }}" class="form-label">Email</label>
-          <input type="text" name="username" class="form-control" id="{{ form.username.id_for_label }}" required>
+        <div class="space-y-2">
+          <label for="{{ form.username.id_for_label }}" class="">Email</label>
+          <input type="text" name="username" class="input" id="{{ form.username.id_for_label }}" required>
         </div>
-        <div class="mb-3">
-          <label for="{{ form.password.id_for_label }}" class="form-label">Password</label>
-          <input type="password" name="password" class="form-control" id="{{ form.password.id_for_label }}" required>
+        <div class="space-y-2">
+          <label for="{{ form.password.id_for_label }}" class="">Password</label>
+          <input type="password" name="password" class="input" id="{{ form.password.id_for_label }}" required>
         </div>
-        <button class="btn btn-primary w-100" type="submit">Login</button>
+        <button class="btn-primary w-full" type="submit">Login</button>
       </form>
-      <div class="mt-3">
+      <div class="space-y-1 text-sm">
         <a href="{% url 'password_reset' %}">Forgot your password?</a>
-      </div>
-      <div class="mt-1">
-        <a href="{% url 'register' %}">Need an account? Register</a>
+        <div><a href="{% url 'register' %}">Need an account? Register</a></div>
       </div>
     </div>
   </div>

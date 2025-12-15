@@ -1,11 +1,11 @@
 {% extends "portfolios/base.html" %}
 {% block title %}My Portfolio{% endblock %}
 {% block content %}
-<div class="container my-5" style="max-width:420px;">
+<div class="mx-auto max-w-xl">
   <div class="card shadow-sm">
-    <div class="card-body text-center">
-      <p>You haven't created a portfolio yet.</p>
-      <a href="{% url 'add-portfolio' %}" class="btn btn-primary">Add Portfolio</a>
+    <div class="card-content text-center space-y-3">
+      <p class="text-lg">You haven't created a portfolio yet.</p>
+      <a href="{% url 'add-portfolio' %}" class="btn-primary">Add Portfolio</a>
     </div>
   </div>
 </div>

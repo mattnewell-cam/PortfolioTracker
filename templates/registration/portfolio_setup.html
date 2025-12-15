@@ -1,43 +1,45 @@
 {% extends "portfolios/base.html" %}
 {% block title %}Create Portfolio{% endblock %}
 {% block content %}
-<div class="container my-5" style="max-width:420px;">
+<div class="mx-auto max-w-md">
   <div class="card shadow-sm">
-    <div class="card-body">
-      <h1 class="h4 mb-3">Create Portfolio</h1>
-      <form method="post">
+    <div class="card-content space-y-4">
+      <h1 class="text-2xl font-semibold">Create Portfolio</h1>
+      <form method="post" class="space-y-4">
         {% csrf_token %}
-        <div class="mb-3">
-          <label for="{{ form.display_name.id_for_label }}" class="form-label">Display Name</label>
-          <input type="text" name="display_name" class="form-control" id="{{ form.display_name.id_for_label }}" required>
-          {% if form.display_name.errors %}<div class="text-danger">{{ form.display_name.errors }}</div>{% endif %}
+        <div class="space-y-2">
+          <label for="{{ form.display_name.id_for_label }}" class="">Display Name</label>
+          <input type="text" name="display_name" class="input" id="{{ form.display_name.id_for_label }}" required>
+          {% if form.display_name.errors %}<div class="text-danger text-sm">{{ form.display_name.errors }}</div>{% endif %}
         </div>
-        <div class="mb-3">
-          <label for="{{ form.substack_url.id_for_label }}" class="form-label">Substack URL</label>
-          <input type="url" name="substack_url" class="form-control" id="{{ form.substack_url.id_for_label }}" required>
-          {% if form.substack_url.errors %}<div class="text-danger">{{ form.substack_url.errors }}</div>{% endif %}
+        <div class="space-y-2">
+          <label for="{{ form.substack_url.id_for_label }}" class="">Substack URL</label>
+          <input type="url" name="substack_url" class="input" id="{{ form.substack_url.id_for_label }}" required>
+          {% if form.substack_url.errors %}<div class="text-danger text-sm">{{ form.substack_url.errors }}</div>{% endif %}
         </div>
-        <div class="mb-3">
-          <label class="form-label">Benchmarks</label>
-          {% for value, label in form.benchmarks.field.choices %}
-            <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                name="benchmarks"
-                id="benchmark_{{ forloop.counter }}"
-                value="{{ value }}"
-                {% if value in form.benchmarks.value %}checked{% endif %}
-              >
-              <label class="form-check-label" for="benchmark_{{ forloop.counter }}">{{ label }}</label>
-            </div>
-          {% endfor %}
-          {% if form.benchmarks.errors %}<div class="text-danger">{{ form.benchmarks.errors }}</div>{% endif %}
-          <div class="form-text">{{ form.benchmarks.help_text }}</div>
+        <div class="space-y-2">
+          <label class="">Benchmarks</label>
+          <div class="space-y-2">
+            {% for value, label in form.benchmarks.field.choices %}
+              <label class="flex items-center gap-3">
+                <input
+                  class="checkbox"
+                  type="checkbox"
+                  name="benchmarks"
+                  id="benchmark_{{ forloop.counter }}"
+                  value="{{ value }}"
+                  {% if value in form.benchmarks.value %}checked{% endif %}
+                >
+                <span>{{ label }}</span>
+              </label>
+            {% endfor %}
+          </div>
+          {% if form.benchmarks.errors %}<div class="text-danger text-sm">{{ form.benchmarks.errors }}</div>{% endif %}
+          <div class="muted">{{ form.benchmarks.help_text }}</div>
         </div>
-        <button class="btn btn-primary w-100" type="submit">Create Portfolio</button>
+        <button class="btn-primary w-full" type="submit">Create Portfolio</button>
       </form>
-      <div class="mt-3 text-center">
+      <div class="mt-1 text-center text-sm">
         <a href="{% url 'portfolios:portfolio-detail' %}">Skip for now</a>
       </div>
     </div>
