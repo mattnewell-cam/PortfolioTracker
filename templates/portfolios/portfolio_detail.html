@@ -241,7 +241,6 @@
             </svg>
           </button>
           <div id="benchmarkMenu" class="absolute right-0 z-10 mt-2 w-full rounded-lg border border-border bg-white shadow-lg hidden">
-            <div class="border-b border-border px-3 py-2 text-xs font-semibold text-text">Select up to three benchmarks</div>
             <div class="max-h-64 overflow-y-auto px-3 py-3 space-y-2" id="benchmarkList">
               {% for bm in benchmark_data %}
                 <label class="flex items-center gap-2 text-sm text-text">
@@ -470,15 +469,15 @@
           const checkedCount = benchmarkCheckboxes.filter(cb => cb.checked).length;
           if (checkedCount > maxBenchmarks) {
             checkbox.checked = false;
-            benchmarkError.textContent = 'Select up to three benchmarks.';
+            benchmarkError.textContent = 'You can select up to three benchmarks.';
             return;
           }
-          benchmarkError.textContent = 'Select up to three benchmarks';
+          benchmarkError.textContent = '';
           applyCheckboxState();
         });
       });
 
-      benchmarkError.textContent = 'Select up to three benchmarks';
+      benchmarkError.textContent = '';
       applyCheckboxState();
 
       benchmarkToggle.addEventListener('click', (event) => {

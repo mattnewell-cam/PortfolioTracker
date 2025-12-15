@@ -131,6 +131,24 @@ def build_portfolio_context(p, include_details=True):
                 "data": [],
             })
 
+    default_benchmarks = p.benchmarks
+
+    if benchmark_data and default_benchmarks:
+        default_set = set(default_benchmarks)
+        ordered_data = []
+
+        for ticker, _ in BENCHMARK_CHOICES:
+            if ticker in default_set:
+                match = next((bm for bm in benchmark_data if bm["ticker"] == ticker), None)
+                if match:
+                    ordered_data.append(match)
+
+        for bm in benchmark_data:
+            if bm["ticker"] not in default_set:
+                ordered_data.append(bm)
+
+        benchmark_data = ordered_data
+
     return {
         "positions": positions if include_details else [],
         "total_value": total_value,
@@ -140,7 +158,7 @@ def build_portfolio_context(p, include_details=True):
         "history_data_json": json.dumps(history_data, cls=DjangoJSONEncoder),
         "benchmark_data": benchmark_data,
         "benchmark_data_json": json.dumps(benchmark_data, cls=DjangoJSONEncoder),
-        "default_benchmarks": p.benchmarks,
+        "default_benchmarks": default_benchmarks,
     }
 
 
