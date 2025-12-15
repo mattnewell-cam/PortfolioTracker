@@ -49,11 +49,21 @@
         <a class="btn-secondary {% if request.resolver_match.url_name == 'portfolio-explore' or request.resolver_match.url_name == 'portfolio-public-detail' %}!bg-brand !text-white hover:!bg-brandHover{% endif %}" href="{% url 'portfolios:portfolio-explore' %}">Find a Portfolio</a>
         {% if user.is_authenticated %}
           <a class="btn-secondary {% if request.resolver_match.url_name == 'portfolio-detail' %}!bg-brand !text-white hover:!bg-brandHover{% endif %}" href="{% url 'portfolios:portfolio-detail' %}">My Portfolio</a>
-          <a class="btn-ghost" href="{% url 'portfolios:account-details' %}">Account</a>
-          <form method="post" action="{% url 'logout' %}" class="m-0">
-            {% csrf_token %}
-            <button type="submit" class="btn-ghost">Sign out</button>
-          </form>
+          <div class="relative" id="userMenuWrapper">
+            <button type="button" class="btn-ghost h-10 w-10 rounded-full border border-border p-0" id="userMenuButton" aria-haspopup="true" aria-expanded="false">
+              <span class="sr-only">Open user menu</span>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-5 w-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2.5c-3.04 0-5.5 1.52-5.5 3.39 0 .61.49 1.11 1.1 1.11h8.8c.61 0 1.1-.5 1.1-1.11 0-1.87-2.46-3.39-5.5-3.39Z" />
+              </svg>
+            </button>
+            <div id="userMenu" class="absolute right-0 mt-2 hidden w-48 rounded-xl border border-border bg-surface shadow-lg">
+              <a class="block px-4 py-3 text-sm hover:bg-slate-50" href="{% url 'portfolios:account-details' %}">Account</a>
+              <form method="post" action="{% url 'logout' %}" class="m-0">
+                {% csrf_token %}
+                <button type="submit" class="block w-full px-4 py-3 text-left text-sm hover:bg-slate-50">Sign out</button>
+              </form>
+            </div>
+          </div>
         {% else %}
           <a class="btn-primary" href="{% url 'login' %}">Log in / Sign up</a>
         {% endif %}
@@ -61,9 +71,41 @@
     </div>
   </header>
 
+  {% if messages %}
+    <div class="container pt-4">
+      <div class="space-y-2">
+        {% for message in messages %}
+          <div class="rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm">{{ message }}</div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
   <main class="container py-8">
     {% block content %}{% endblock %}
   </main>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const menuButton = document.getElementById('userMenuButton');
+      const menu = document.getElementById('userMenu');
+      const wrapper = document.getElementById('userMenuWrapper');
+
+      if (menuButton && menu && wrapper) {
+        const toggleMenu = () => {
+          const isOpen = menu.classList.toggle('hidden');
+          menuButton.setAttribute('aria-expanded', (!isOpen).toString());
+        };
+
+        menuButton.addEventListener('click', () => toggleMenu());
+        document.addEventListener('click', (event) => {
+          if (!wrapper.contains(event.target)) {
+            menu.classList.add('hidden');
+            menuButton.setAttribute('aria-expanded', 'false');
+          }
+        });
+      }
+    });
+  </script>
   {% block extra_scripts %}{% endblock %}
 </body>
 </html>

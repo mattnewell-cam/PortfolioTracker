@@ -15,7 +15,7 @@
             <div class="space-y-2">
               <label for="{{ form.display_name.id_for_label }}">Display Name</label>
               <div class="flex gap-2">
-                {{ form.display_name.as_widget(attrs={'class': 'input flex-1'}) }}
+                {{ form.display_name }}
                 <button type="button" class="btn-secondary" id="edit-display-name">Edit</button>
               </div>
               {% if form.display_name.errors %}
@@ -25,7 +25,7 @@
             <div class="space-y-2">
               <label for="{{ form.email.id_for_label }}">Email</label>
               <div class="flex gap-2">
-                {{ form.email.as_widget(attrs={'class': 'input flex-1'}) }}
+                {{ form.email }}
                 <button type="button" class="btn-secondary" id="edit-email">Edit</button>
               </div>
               {% if form.email.errors %}

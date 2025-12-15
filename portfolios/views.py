@@ -1,5 +1,6 @@
 from django.shortcuts import redirect, get_object_or_404, render
 from django.http import JsonResponse
+from django.contrib import messages
 from django.urls import reverse_lazy
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
@@ -597,6 +598,19 @@ def verify_email_change(request):
     pending = request.session.get("pending_email_change")
     if not pending:
         return redirect("portfolios:account-details")
+
+    if request.method == "POST" and request.POST.get("resend"):
+        code = f"{random.randint(0, 999999):06d}"
+        pending["code"] = code
+        request.session["pending_email_change"] = pending
+        send_email(
+            "Verify your new email",
+            f"Your verification code is {code}",
+            [pending["new_email"]],
+            fail_silently=True,
+        )
+        messages.success(request, "A new verification code has been sent.")
+        return redirect("portfolios:account-verify-email")
 
     if request.method == "POST":
         form = EmailVerificationForm(request.POST)
