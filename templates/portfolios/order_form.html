@@ -2,23 +2,18 @@
 {% block title %}Place Order – {{ portfolio.name }}{% endblock %}
 
 {% block content %}
-  <h1 class="mb-4">Place Order for “{{ portfolio.name }}”</h1>
-  <form method="post" novalidate>
-    {% csrf_token %}
-    <!--
-      Django’s default {{ form.as_p }} will wrap each field in <p>.
-      If you want finer control, you can iterate form fields and add
-      Bootstrap’s .mb-3 and form-control classes. For simplicity, we’ll
-      keep {{ form.as_p }} here, but add a wrapper for styling.
-    -->
-    <div class="mb-3">
-      {{ form.as_p }}
-    </div>
+  <div class="space-y-4">
+    <h1 class="text-3xl font-semibold">Place Order for “{{ portfolio.name }}”</h1>
+    <form method="post" novalidate class="space-y-4">
+      {% csrf_token %}
+      <div class="space-y-3">
+        {{ form.as_p }}
+      </div>
 
-    <button class="btn btn-success" type="submit">Submit Order</button>
-    <a class="btn btn-secondary ms-2" href="{% url 'portfolios:portfolio-detail' %}">
-      Cancel
-    </a>
-  </form>
+      <div class="flex items-center gap-3">
+        <button class="btn-primary" type="submit">Submit Order</button>
+        <a class="btn-secondary" href="{% url 'portfolios:portfolio-detail' %}">Cancel</a>
+      </div>
+    </form>
+  </div>
 {% endblock %}
-

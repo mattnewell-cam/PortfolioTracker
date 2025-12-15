@@ -2,51 +2,51 @@
 {% block title %}Account Details{% endblock %}
 
 {% block content %}
-  <h1 class="mb-4">Account Details</h1>
-  <div class="row">
-    <div class="col-md-6">
-      <div class="card mb-4">
-        <div class="card-body">
-          <form method="post">
+  <div class="space-y-6">
+    <h1 class="text-3xl font-semibold">Account Details</h1>
+    <div class="grid gap-6 lg:grid-cols-2">
+      <div class="card">
+        <div class="card-content space-y-4">
+          <form method="post" class="space-y-4">
             {% csrf_token %}
             {% if form.non_field_errors %}
-              <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+              <div class="rounded-xl border border-danger/20 bg-red-50 px-4 py-3 text-danger text-sm">{{ form.non_field_errors }}</div>
             {% endif %}
-            <div class="mb-3">
-              <label for="{{ form.display_name.id_for_label }}" class="form-label">Display Name</label>
-              <div class="input-group">
-                {{ form.display_name }}
-                <button type="button" class="btn btn-outline-secondary" id="edit-display-name">Edit</button>
+            <div class="space-y-2">
+              <label for="{{ form.display_name.id_for_label }}">Display Name</label>
+              <div class="flex gap-2">
+                {{ form.display_name.as_widget(attrs={'class': 'input flex-1'}) }}
+                <button type="button" class="btn-secondary" id="edit-display-name">Edit</button>
               </div>
               {% if form.display_name.errors %}
-                <div class="text-danger small">{{ form.display_name.errors|join:', ' }}</div>
+                <div class="text-sm text-danger">{{ form.display_name.errors|join:', ' }}</div>
               {% endif %}
             </div>
-            <div class="mb-3">
-              <label for="{{ form.email.id_for_label }}" class="form-label">Email</label>
-              <div class="input-group">
-                {{ form.email }}
-                <button type="button" class="btn btn-outline-secondary" id="edit-email">Edit</button>
+            <div class="space-y-2">
+              <label for="{{ form.email.id_for_label }}">Email</label>
+              <div class="flex gap-2">
+                {{ form.email.as_widget(attrs={'class': 'input flex-1'}) }}
+                <button type="button" class="btn-secondary" id="edit-email">Edit</button>
               </div>
               {% if form.email.errors %}
-                <div class="text-danger small">{{ form.email.errors|join:', ' }}</div>
+                <div class="text-sm text-danger">{{ form.email.errors|join:', ' }}</div>
               {% endif %}
             </div>
-            <button type="submit" class="btn btn-primary" id="save-btn" disabled>Save changes</button>
+            <button type="submit" class="btn-primary" id="save-btn" disabled>Save changes</button>
           </form>
         </div>
       </div>
-    </div>
-    <div class="col-md-6">
-      {% if portfolio %}
-      <div class="card">
-        <div class="card-body">
-          <h5 class="card-title">Linked Substack</h5>
-          <p class="mb-1"><strong>Substack URL:</strong> {{ portfolio.substack_url }}</p>
-          <p class="mb-0"><strong>Substack Name:</strong> {{ portfolio.name }}</p>
+      <div>
+        {% if portfolio %}
+        <div class="card h-full">
+          <div class="card-content space-y-2">
+            <h2 class="section-title">Linked Substack</h2>
+            <p class="muted"><strong class="text-text">Substack URL:</strong> {{ portfolio.substack_url }}</p>
+            <p class="muted"><strong class="text-text">Substack Name:</strong> {{ portfolio.name }}</p>
+          </div>
         </div>
+        {% endif %}
       </div>
-      {% endif %}
     </div>
   </div>
   <script>

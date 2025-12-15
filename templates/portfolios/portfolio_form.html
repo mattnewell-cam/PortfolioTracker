@@ -2,19 +2,20 @@
 {% block title %}New Portfolio{% endblock %}
 
 {% block content %}
-  <h1 class="mb-4">Create a Portfolio</h1>
-  <div class="alert alert-warning">
-    Benchmark selections are permanent and cannot be changed later. Choose carefully.
-  </div>
-  <form method="post" novalidate>
-    {% csrf_token %}
-    <div class="mb-3">
-      {{ form.as_p }}
+  <div class="space-y-4">
+    <h1 class="text-3xl font-semibold">Create a Portfolio</h1>
+    <div class="rounded-xl border border-warning/30 bg-amber-50 px-4 py-3 text-sm text-warning">
+      Benchmark selections are permanent and cannot be changed later. Choose carefully.
     </div>
-    <button class="btn btn-success" type="submit">Save</button>
-    <a class="btn btn-outline-secondary ms-2" href="{% url 'portfolios:portfolio-detail' %}">
-      Cancel
-    </a>
-  </form>
+    <form method="post" novalidate class="space-y-4">
+      {% csrf_token %}
+      <div class="space-y-3">
+        {{ form.as_p }}
+      </div>
+      <div class="flex items-center gap-3">
+        <button class="btn-primary" type="submit">Save</button>
+        <a class="btn-secondary" href="{% url 'portfolios:portfolio-detail' %}">Cancel</a>
+      </div>
+    </form>
+  </div>
 {% endblock %}
-

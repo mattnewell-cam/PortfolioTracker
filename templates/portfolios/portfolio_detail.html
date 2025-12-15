@@ -3,19 +3,19 @@
 {% block title %}{{ portfolio.name }}{% endblock %}
 
 {% block content %}
-<div class="px-3 py-3 px-lg-5 py-lg-5">
-  <div class="d-flex align-items-center mb-4">
-    <div class="me-auto">
-      <h1 class="mb-0">{{ portfolio.name }}</h1>
+<div class="space-y-6">
+  <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+    <div class="space-y-2">
+      <h1 class="text-3xl font-semibold">{{ portfolio.name }}</h1>
       {% if portfolio.short_description %}
-        <p class="text-muted mt-2 mb-0" style="font-size: 18px" ><i>"{{ portfolio.short_description }}"</i></p>
+        <p class="muted text-base italic">"{{ portfolio.short_description }}"</p>
       {% endif %}
     </div>
     {% if is_owner %}
-      <div class="d-flex flex-column align-items-end ms-3">
-        <form method="post" action="{% url 'portfolios:portfolio-toggle-privacy' %}" class="mb-2">
+      <div class="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
+        <form method="post" action="{% url 'portfolios:portfolio-toggle-privacy' %}">
           {% csrf_token %}
-          <button type="submit" class="btn btn-outline-primary text-nowrap px-4" style="min-width: 9rem;">
+          <button type="submit" class="btn-secondary min-w-[9rem]">
             {% if portfolio.is_private %}
               Make Public
             {% else %}
@@ -24,7 +24,7 @@
           </button>
         </form>
         {% if portfolio.is_private %}
-          <a class="btn btn-outline-primary text-nowrap px-4" href="{% url 'portfolios:portfolio-allow-list' %}" style="min-width: 9rem;">Allow List ({{ allowed_count }})</a>
+          <a class="btn-secondary min-w-[9rem]" href="{% url 'portfolios:portfolio-allow-list' %}">Allow List ({{ allowed_count }})</a>
         {% endif %}
       </div>
     {% endif %}
@@ -33,185 +33,427 @@
   {% if not is_owner %}
     {% if not portfolio.is_private or is_allowed %}
       {% if user.is_authenticated %}
-        <form method="post" action="{% url 'portfolios:portfolio-follow-toggle' portfolio.pk %}" class="mb-3">
+        <form method="post" action="{% url 'portfolios:portfolio-follow-toggle' portfolio.pk %}">
           {% csrf_token %}
-          <button type="submit" class="btn btn-primary">
+          <button type="submit" class="btn-primary">
             {% if is_following %}Unfollow Portfolio{% else %}Follow Portfolio{% endif %}
           </button>
         </form>
       {% else %}
-        <p class="mb-3">
-          <a class="btn btn-primary" href="{% url 'login' %}?next={{ request.path }}">Follow Portfolio</a>
+        <p>
+          <a class="btn-primary" href="{% url 'login' %}?next={{ request.path }}">Follow Portfolio</a>
         </p>
       {% endif %}
     {% endif %}
   {% endif %}
 
   {% if private_view %}
-    <p class="text-muted"><em>This portfolio is private. Only the value chart is visible.</em></p>
+    <p class="muted italic">This portfolio is private. Only the value chart is visible.</p>
   {% endif %}
 
   {% if not private_view %}
-  <div class="card mb-4">
-    <div class="card-body">
-      <div class="d-flex align-items-stretch">
-        <div class="me-4 d-flex flex-column justify-content-between">
-          <h2 class="h5">Buy or Sell Shares</h2>
-          <p class="mb-0">
-            <strong>Cash Balance:</strong>
-            ${{ portfolio.cash_balance|floatformat:2 }}
-          </p>
-        </div>
+  <div class="card">
+    <div class="card-header">
+      <div class="space-y-1">
+        <h2 class="section-title">Buy or Sell Shares</h2>
+        <p class="muted">Cash Balance: ${{ portfolio.cash_balance|floatformat:2 }}</p>
+      </div>
+    </div>
+    <div class="card-content">
+      {% if is_owner %}
+      <form method="post" action="{% url 'portfolios:order-create' %}" class="space-y-4" id="orderForm">
+        {% csrf_token %}
+        <input type="hidden" name="symbol" id="id_symbol" required>
 
-        {% if is_owner %}
-        <form method="post" action="{% url 'portfolios:order-create' %}" class="d-flex flex-grow-1 align-items-stretch" id="orderForm">
-          {% csrf_token %}
-          <input type="hidden" name="symbol" id="id_symbol" required>
+        <div class="grid gap-4 lg:grid-cols-2">
+          <div class="space-y-3">
+            <div id="tickerSearch" class="flex gap-2">
+              <input class="input flex-1" id="tickerLookupInput" placeholder="Enter ticker..." aria-label="Enter ticker">
+              <button class="btn-primary" type="button" id="tickerLookupButton">Find</button>
+            </div>
 
-          <div class="d-flex flex-grow-1 align-items-center">
-            <div class="row g-3 w-100 align-items-start">
-              <div class="col-12 col-lg-6">
-                <div id="tickerSearch" class="input-group">
-                  <input class="form-control" id="tickerLookupInput" placeholder="Enter ticker..." aria-label="Enter ticker">
-                  <button class="btn btn-primary" type="button" id="tickerLookupButton">Find</button>
+            <div id="tickerInfo" class="hidden rounded-xl border border-border bg-slate-50 px-4 py-3">
+              <div class="flex items-start justify-between gap-3">
+                <div class="space-y-1">
+                  <div class="muted uppercase text-xs">Company</div>
+                  <div class="text-sm font-semibold" id="tickerCompany"></div>
+                  <div class="muted" id="tickerSymbol"></div>
                 </div>
-
-                <div id="tickerInfo" class="d-none border rounded p-3 bg-light">
-                  <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                      <div class="text-muted small text-uppercase">Company</div>
-                      <div class="fw-semibold" id="tickerCompany"></div>
-                      <div class="text-muted" id="tickerSymbol"></div>
-                    </div>
-                    <div class="text-end">
-                      <div class="text-muted small text-uppercase">Current Price</div>
-                      <div class="fw-semibold" id="tickerPrice"></div>
-                      <span class="badge" id="marketBadge"></span>
-                    </div>
-                  </div>
-                  <button type="button" class="btn btn-link p-0 mt-2" id="changeTickerButton">Change ticker</button>
+                <div class="text-right space-y-1">
+                  <div class="muted uppercase text-xs">Current Price</div>
+                  <div class="text-sm font-semibold" id="tickerPrice"></div>
+                  <span class="badge" id="marketBadge"></span>
                 </div>
-
-                <div id="tickerError" class="text-danger small mt-2"></div>
               </div>
+              <button type="button" class="btn-ghost px-0" id="changeTickerButton">Change ticker</button>
+            </div>
 
-              <div class="col-12 col-lg-6 d-none" id="orderDetails">
-                <div class="row g-2 align-items-center">
-                  <div class="col-12 col-sm-6">
-                    <input class="form-control"
-                           name="quantity" id="id_quantity" type="number" step="1" min="1"
-                           placeholder="Quantity" required disabled>
-                    <div class="form-text" id="orderAmount"></div>
-                  </div>
-                  <div class="col-12 col-sm-6 d-flex gap-2">
-                    <button type="submit" name="side" value="BUY"  class="btn btn-success h-100 fs-5 flex-grow-1 order-action-btn" disabled>Buy</button>
-                    <button type="submit" name="side" value="SELL" class="btn btn-danger  h-100 fs-5 flex-grow-1 order-action-btn" disabled>Sell</button>
-                  </div>
-                </div>
+            <div id="tickerError" class="text-danger text-sm"></div>
+          </div>
+
+          <div class="hidden space-y-3" id="orderDetails">
+            <div class="grid gap-3 sm:grid-cols-2 sm:items-start">
+              <div class="space-y-2">
+                <input class="input" name="quantity" id="id_quantity" type="number" step="1" min="1" placeholder="Quantity" required disabled>
+                <div class="muted" id="orderAmount"></div>
+              </div>
+              <div class="flex gap-2">
+                <button type="submit" name="side" value="BUY" class="btn-primary order-action-btn w-full" disabled>Buy</button>
+                <button type="submit" name="side" value="SELL" class="btn-danger order-action-btn w-full" disabled>Sell</button>
               </div>
             </div>
           </div>
-        </form>
-        {% endif %}
-
         </div>
-        {% if is_owner and order_form.non_field_errors %}
-        <div class="text-danger mt-2">{{ order_form.non_field_errors }}</div>
-        {% endif %}
+      </form>
+      {% endif %}
+
+      {% if is_owner and order_form.non_field_errors %}
+        <div class="mt-2 text-sm text-danger">{{ order_form.non_field_errors }}</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header items-center">
+      <div>
+        <h2 class="section-title">Current Holdings</h2>
+        <p class="muted">Allocation and current prices</p>
+      </div>
+    </div>
+    <div class="card-content">
+      {% if positions %}
+        <div class="overflow-x-auto">
+          <table class="table">
+            <thead>
+              <tr>
+                <th class="table-th">Symbol</th>
+                <th class="table-th">Quantity</th>
+                <th class="table-th">Current Price</th>
+                <th class="table-th">FX Rate</th>
+                <th class="table-th text-right">Value (USD)</th>
+                <th class="table-th text-right">Allocation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for pos in positions %}
+                <tr>
+                  <td class="table-td">{{ pos.symbol }}</td>
+                  <td class="table-td">{{ pos.quantity }}</td>
+                  <td class="table-td">
+                    {% if pos.mid_local is not None %}
+                      {{ pos.mid_local|floatformat:2 }} {{ pos.currency }}
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  </td>
+                  <td class="table-td">
+                    {% if pos.fx_rate is not None %}
+                      1 {{ pos.currency }} = ${{ pos.fx_rate|floatformat:4 }}
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  </td>
+                  <td class="table-td text-right">
+                    {% if pos.value_usd is not None %}
+                      ${{ pos.value_usd|floatformat:2 }}
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  </td>
+                  <td class="table-td text-right">
+                    {% if pos.allocation is not None %}
+                      {{ pos.allocation|floatformat:2 }}%
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+              <tr>
+                <td class="table-td">Cash</td>
+                <td class="table-td"></td>
+                <td class="table-td"></td>
+                <td class="table-td"></td>
+                <td class="table-td text-right">${{ portfolio.cash_balance|floatformat:2 }}</td>
+                <td class="table-td text-right">{{ cash_allocation|floatformat:2 }}%</td>
+              </tr>
+              <tr class="bg-slate-50">
+                <td class="table-td font-semibold" colspan="4">Total Value</td>
+                <td class="table-td font-semibold text-right">${{ total_value|floatformat:2 }}</td>
+                <td class="table-td font-semibold text-right">100%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="muted"><em>No holdings in this portfolio yet.</em></p>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <div class="card-header flex-col gap-4 sm:flex-row sm:items-center">
+      <div class="space-y-1">
+        <h2 class="section-title">Value Over Time</h2>
+        <p class="muted">Track performance and compare benchmarks</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2 sm:ml-auto">
+        <div class="flex flex-wrap gap-2" id="rangeButtons">
+          <button type="button" class="pill pill-active" data-range="max">Max</button>
+          <button type="button" class="pill" data-range="5y">5Y</button>
+          <button type="button" class="pill" data-range="1y">1Y</button>
+          <button type="button" class="pill" data-range="ytd">YTD</button>
+          <button type="button" class="pill" data-range="6m">6M</button>
+          <button type="button" class="pill" data-range="1m">1M</button>
+        </div>
+        <div id="returnSummary" class="text-right text-sm sm:text-base"></div>
+      </div>
+    </div>
+    <div class="card-content">
+      <div class="h-64 sm:h-80">
+        <canvas id="historyChart" class="h-full w-full"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid gap-6 lg:grid-cols-2">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2 class="section-title">Benchmarks</h2>
+          <p class="muted">Toggle comparisons</p>
+        </div>
+      </div>
+      <div class="card-content space-y-3">
+        {% for bm in benchmark_data %}
+          <label class="flex items-center justify-between rounded-xl border border-border px-4 py-3">
+            <div>
+              <div class="font-semibold text-text">{{ bm.label }}</div>
+              <div class="muted">{{ bm.ticker }}</div>
+            </div>
+            <input
+              class="checkbox benchmark-option"
+              type="checkbox"
+              data-index="{{ forloop.counter0 }}"
+              {% if bm.ticker in default_benchmarks %}checked{% endif %}
+            />
+          </label>
+        {% endfor %}
       </div>
     </div>
 
-  <!-- Current Holdings -->
-  <h2 class="h5 mb-3">Current Holdings</h2>
-  {% if positions %}
-    <div class="table-responsive mb-4">
-      <table class="table table-striped w-100">
-        <thead class="table-light">
-          <tr>
-            <th scope="col">Symbol</th>
-            <th scope="col">Quantity</th>
-            <th scope="col">Price (local)</th>
-            <th scope="col">FX Rate (→USD)</th>
-            <th scope="col">Value (USD)</th>
-            <th scope="col">Allocation</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for pos in positions %}
-            <tr>
-              <td>{{ pos.symbol }}</td>
-              <td>{{ pos.quantity }}</td>
-              <td>
-                {% if pos.mid_local is not None %}
-                  {{ pos.mid_local|floatformat:2 }} {{ pos.currency }}
-                {% else %}
-                  N/A
-                {% endif %}
-              </td>
-              <td>
-                {% if pos.fx_rate is not None %}
-                  1 {{ pos.currency }} = ${{ pos.fx_rate|floatformat:4 }}
-                {% else %}
-                  N/A
-                {% endif %}
-              </td>
-              <td>
-                {% if pos.value_usd is not None %}
-                  ${{ pos.value_usd|floatformat:2 }}
-                {% else %}
-                  N/A
-                {% endif %}
-              </td>
-              <td>
-                {% if pos.allocation is not None %}
-                  {{ pos.allocation|floatformat:2 }}%
-                {% else %}
-                  N/A
-                {% endif %}
-              </td>
-            </tr>
-          {% endfor %}
-          <tr>
-            <td>Cash</td>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td>${{ portfolio.cash_balance|floatformat:2 }}</td>
-            <td>{{ cash_allocation|floatformat:2 }}%</td>
-          </tr>
-          <tr class="table-light">
-            <td colspan="4"><strong>Total Value</strong></td>
-            <td><strong>${{ total_value|floatformat:2 }}</strong></td>
-            <td><strong>100%</strong></td>
-          </tr>
-        </tbody>
-      </table>
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2 class="section-title">Recent Orders</h2>
+          <p class="muted">Executed trades</p>
+        </div>
+      </div>
+      <div class="card-content">
+        {% if orders_data %}
+          <div class="overflow-x-auto">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th class="table-th">When</th>
+                  <th class="table-th">Symbol</th>
+                  <th class="table-th">Side</th>
+                  <th class="table-th">Qty</th>
+                  <th class="table-th">Price (Local)</th>
+                  <th class="table-th">FX Rate</th>
+                  <th class="table-th text-right">Total Value (USD)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for o in orders_data %}
+                  <tr>
+                    <td class="table-td">{{ o.executed_at|date:"Y-m-d H:i" }}</td>
+                    <td class="table-td">{{ o.symbol }}</td>
+                    <td class="table-td">{{ o.side }}</td>
+                    <td class="table-td">{{ o.quantity }}</td>
+                    <td class="table-td">
+                      {% if o.price_local %}
+                        {{ o.price_local|floatformat:2 }} {{ o.currency }}
+                      {% else %}
+                        N/A
+                      {% endif %}
+                    </td>
+                    <td class="table-td">
+                      {% if o.fx_rate %}
+                        1 {{ o.currency }} = ${{ o.fx_rate|floatformat:4 }}
+                      {% else %}
+                        N/A
+                      {% endif %}
+                    </td>
+                    <td class="table-td text-right">
+                      {% if o.total_value_usd %}
+                        ${{ o.total_value_usd|floatformat:2 }}
+                      {% else %}
+                        N/A
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="muted"><em>No orders have been placed yet.</em></p>
+        {% endif %}
+      </div>
     </div>
-  {% else %}
-    <p class="text-muted"><em>No holdings in this portfolio yet.</em></p>
-  {% endif %}
-  {% endif %}
-
-  <!-- Value Over Time -->
-  <h2 class="h5 mb-3">Value Over Time</h2>
-  <div class="d-flex align-items-center mb-2">
-    <div class="btn-group btn-group-sm" role="group" id="rangeButtons">
-      <button type="button" class="btn btn-outline-primary active" data-range="max">Max</button>
-      <button type="button" class="btn btn-outline-primary" data-range="5y">5Y</button>
-      <button type="button" class="btn btn-outline-primary" data-range="1y">1Y</button>
-      <button type="button" class="btn btn-outline-primary" data-range="ytd">YTD</button>
-      <button type="button" class="btn btn-outline-primary" data-range="6m">6M</button>
-      <button type="button" class="btn btn-outline-primary" data-range="1m">1M</button>
-    </div>
-    <div id="returnSummary" class="ms-auto small text-end"></div>
   </div>
-  <div class="mb-4">
-    <canvas id="historyChart" style="max-width:100%; height:auto;"></canvas>
-  </div>
+</div>
+{% endblock %}
 
-  {% if is_owner %}
+{% block extra_scripts %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script>
-    (function() {
+    document.addEventListener("DOMContentLoaded", () => {
+      // ===== Prepare full data arrays =====
+      const historyData = {{ history_data_json|safe }};
+      const fullLabels = historyData.map(pt => pt.date);
+      const fullPortfolioValues = historyData.map(pt => Number(pt.value));
+
+      const benchmarkData = {{ benchmark_data_json|safe }};
+      const fullBenchmarkValues = benchmarkData.map(bm => {
+        const map = {};
+        bm.data.forEach(pt => (map[pt.date] = Number(pt.price_usd)));
+        return fullLabels.map(date => (map[date] !== undefined ? map[date] : null));
+      });
+
+      const colorPool = [
+        { border: "#2563EB", background: "rgba(37,99,235,0.16)" },
+        { border: "#16A34A", background: "rgba(22,163,74,0.16)" },
+        { border: "#DC2626", background: "rgba(220,38,38,0.12)" }
+      ];
+      let availableColors = [...colorPool];
+
+      Chart.defaults.font.family = 'Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial';
+      Chart.defaults.color = '#0F172A';
+      Chart.defaults.borderColor = '#E2E8F0';
+      Chart.defaults.plugins.legend.labels.color = '#64748B';
+
+      const datasets = [{
+        label: "Portfolio",
+        data: [...fullPortfolioValues],
+        borderColor: "#2563EB",
+        backgroundColor: "rgba(37,99,235,0.12)",
+        borderWidth: 3,
+        fill: false,
+        tension: 0.1,
+      }];
+
+      benchmarkData.forEach((bm, idx) => {
+        datasets.push({
+          label: bm.label,
+          data: [...fullBenchmarkValues[idx]],
+          borderColor: "",
+          backgroundColor: "",
+          borderWidth: 2,
+          fill: false,
+          hidden: true,
+          tension: 0.1,
+        });
+      });
+
+      // ===== Instantiate Chart.js =====
+      const ctx = document.getElementById("historyChart").getContext("2d");
+      const historyChart = new Chart(ctx, {
+        type: "line",
+        data: { labels: [...fullLabels], datasets: datasets },
+        options: {
+          scales: {
+            x: { display: true, title: { display: true, text: "Date" }, grid: { color: '#E2E8F0' } },
+            y: { display: true, title: { display: true, text: "Value (USD)" }, ticks: { precision: 0 }, grid: { color: '#E2E8F0' } }
+          },
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
+          plugins: {
+            legend: {
+              labels: {
+                filter: (item, data) => {
+                  const ds = data?.datasets?.[item.datasetIndex];
+                  return ds ? !ds.hidden : true;
+                }
+              }
+            }
+          }
+        }
+      });
+
+      function activeCount() {
+        return benchmarkData.filter((_, idx) => !datasets[idx + 1].hidden).length;
+      }
+
+      function getRangeIndices(range) {
+        const endIndex = fullLabels.length - 1;
+        switch (range) {
+          case '1m': return [Math.max(0, endIndex - 30), endIndex];
+          case '6m': return [Math.max(0, endIndex - 180), endIndex];
+          case 'ytd': return [fullLabels.findIndex(date => date.startsWith(new Date().getFullYear().toString())), endIndex];
+          case '1y': return [Math.max(0, endIndex - 365), endIndex];
+          case '5y': return [Math.max(0, endIndex - 365 * 5), endIndex];
+          default: return [0, endIndex];
+        }
+      }
+
+      function updateReturnSummary(startIdx, endIdx) {
+        const startValue = fullPortfolioValues[startIdx];
+        const endValue = fullPortfolioValues[endIdx];
+        const pctChange = startValue && endValue ? ((endValue - startValue) / startValue) * 100 : 0;
+        const formatted = pctChange >= 0 ? `+${pctChange.toFixed(2)}%` : `${pctChange.toFixed(2)}%`;
+        const colorClass = pctChange >= 0 ? 'text-success' : 'text-danger';
+
+        document.getElementById('returnSummary').innerHTML = `
+          <div class="muted">Return</div>
+          <div class="font-semibold ${colorClass}">${formatted}</div>
+        `;
+      }
+
+      function applyRange(range) {
+        const [startIdx, endIdx] = getRangeIndices(range);
+        historyChart.data.labels = fullLabels.slice(startIdx, endIdx + 1);
+        historyChart.data.datasets.forEach((dataset, idx) => {
+          const sourceData = idx === 0 ? fullPortfolioValues : fullBenchmarkValues[idx - 1];
+          dataset.data = sourceData.slice(startIdx, endIdx + 1);
+        });
+        historyChart.update();
+        updateReturnSummary(startIdx, endIdx);
+      }
+
+      // ===== Range selector buttons =====
+      const rangeButtons = document.querySelectorAll('#rangeButtons button');
+      rangeButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+          rangeButtons.forEach(b => b.classList.remove('pill-active'));
+          btn.classList.add('pill-active');
+          applyRange(btn.dataset.range);
+        });
+      });
+      applyRange('max');
+
+      // ===== Benchmark toggles =====
+      const bmOptions = document.querySelectorAll('.benchmark-option');
+      bmOptions.forEach((checkbox, idx) => {
+        const dataset = historyChart.data.datasets[idx + 1];
+        const colors = availableColors.shift() || colorPool[idx % colorPool.length];
+        dataset.borderColor = colors.border;
+        dataset.backgroundColor = colors.background;
+        if (checkbox.checked) {
+          dataset.hidden = false;
+        }
+        checkbox.addEventListener('change', () => {
+          dataset.hidden = !checkbox.checked;
+          historyChart.update();
+        });
+      });
+
+      // ===== Buy/Sell order widget =====
+      {% if is_owner %}
       const lookupButton = document.getElementById('tickerLookupButton');
       const lookupInput = document.getElementById('tickerLookupInput');
       const tickerSearch = document.getElementById('tickerSearch');
@@ -240,7 +482,7 @@
         actionButtons.forEach((btn) => {
           btn.disabled = !enabled;
         });
-        orderDetails.classList.toggle('d-none', !enabled);
+        orderDetails.classList.toggle('hidden', !enabled);
       };
 
       const resetLookup = () => {
@@ -254,8 +496,8 @@
         marketBadge.textContent = '';
         marketBadge.className = 'badge';
         lookupInput.value = '';
-        tickerInfo.classList.add('d-none');
-        tickerSearch.classList.remove('d-none');
+        tickerInfo.classList.add('hidden');
+        tickerSearch.classList.remove('hidden');
         errorBox.textContent = '';
         orderAmount.textContent = '';
         setOrderEnabled(false);
@@ -299,10 +541,10 @@
         tickerPrice.dataset.currency = data.currency || 'USD';
         tickerPrice.dataset.fxRate = data.fx_rate || '1';
         marketBadge.textContent = data.market_open ? 'Market Open' : 'Market Closed';
-        marketBadge.className = data.market_open ? 'badge bg-success' : 'badge bg-secondary';
+        marketBadge.className = data.market_open ? 'badge text-success bg-green-50' : 'badge text-muted';
         symbolInput.value = data.symbol;
-        tickerSearch.classList.add('d-none');
-        tickerInfo.classList.remove('d-none');
+        tickerSearch.classList.add('hidden');
+        tickerInfo.classList.remove('hidden');
         setOrderEnabled(true);
         updateOrderAmount();
         quantityInput.focus();
@@ -357,300 +599,7 @@
           resetLookup();
         }
       });
-    })();
-  </script>
-  {% endif %}
-
-  <div class="mb-4">
-    <div class="dropdown">
-      <button class="btn btn-secondary dropdown-toggle" type="button" id="benchmarkDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-        Select Benchmarks
-      </button>
-      <div class="dropdown-menu p-2" aria-labelledby="benchmarkDropdown">
-        {% for bm in benchmark_data %}
-          <div class="form-check">
-            <input
-              class="form-check-input benchmark-option"
-              type="checkbox"
-              id="bmOption{{ forloop.counter0 }}"
-              data-index="{{ forloop.counter0 }}"
-              {% if bm.ticker in default_benchmarks %}checked{% endif %}
-            />
-            <label class="form-check-label {% if bm.ticker in default_benchmarks %}fw-bold{% endif %}" for="bmOption{{ forloop.counter0 }}">
-              {{ bm.label }}
-            </label>
-          </div>
-        {% endfor %}
-      </div>
-    </div>
-  </div>
-
-
-  {% if not private_view %}
-  <!-- Order History -->
-  <h2 class="h5 mb-3">Order History</h2>
-  {% if orders_data %}
-    <div class="table-responsive mb-4">
-      <table class="table table-striped table-sm w-100">
-        <thead class="table-light">
-          <tr>
-            <th scope="col">When</th>
-            <th scope="col">Symbol</th>
-            <th scope="col">Side</th>
-            <th scope="col">Qty</th>
-            <th scope="col">Price (Local)</th>
-            <th scope="col">FX Rate</th>
-            <th scope="col">Total Value (USD)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for o in orders_data %}
-            <tr>
-              <td>{{ o.executed_at|date:"Y-m-d H:i" }}</td>
-              <td>{{ o.symbol }}</td>
-              <td>{{ o.side }}</td>
-              <td>{{ o.quantity }}</td>
-              <td>
-                {% if o.price_local %}
-                  {{ o.price_local|floatformat:2 }} {{ o.currency }}
-                {% else %}
-                  N/A
-                {% endif %}
-              </td>
-              <td>
-                {% if o.fx_rate %}
-                  1 {{ o.currency }} = ${{ o.fx_rate|floatformat:4 }}
-                {% else %}
-                  N/A
-                {% endif %}
-              </td>
-              <td>
-                {% if o.total_value_usd %}
-                  ${{ o.total_value_usd|floatformat:2 }}
-                {% else %}
-                  N/A
-                {% endif %}
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  {% else %}
-    <p class="text-muted"><em>No orders have been placed yet.</em></p>
-  {% endif %}
-  {% endif %}
-
-
-</div>
-{% endblock %}
-
-{% block extra_scripts %}
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      // ===== Prepare full data arrays =====
-      const historyData = {{ history_data_json|safe }};
-      const fullLabels = historyData.map(pt => pt.date);
-      const fullPortfolioValues = historyData.map(pt => Number(pt.value));
-
-      const benchmarkData = {{ benchmark_data_json|safe }};
-      const fullBenchmarkValues = benchmarkData.map(bm => {
-        const map = {};
-        bm.data.forEach(pt => (map[pt.date] = Number(pt.price_usd)));
-        return fullLabels.map(date => (map[date] !== undefined ? map[date] : null));
-      });
-
-      const colorPool = [
-        { border: "rgba(0,123,255,1)", background: "rgba(0,123,255,0.2)" },
-        { border: "rgba(40,167,69,1)", background: "rgba(40,167,69,0.2)" },
-        { border: "rgba(220,53,69,1)", background: "rgba(220,53,69,0.2)" }
-      ];
-      let availableColors = [...colorPool];
-
-      const datasets = [{
-        label: "Portfolio",
-        data: [...fullPortfolioValues],
-        borderColor: "#000",
-        backgroundColor: "rgba(0,0,0,0.1)",
-        borderWidth: 3,
-        fill: false
-      }];
-
-      benchmarkData.forEach((bm, idx) => {
-        datasets.push({
-          label: bm.label,
-          data: [...fullBenchmarkValues[idx]],
-          borderColor: "",
-          backgroundColor: "",
-          borderWidth: 2,
-          fill: false,
-          hidden: true
-        });
-      });
-
-      // ===== Instantiate Chart.js =====
-      const ctx = document.getElementById("historyChart").getContext("2d");
-      const historyChart = new Chart(ctx, {
-        type: "line",
-        data: { labels: [...fullLabels], datasets: datasets },
-        options: {
-          scales: {
-            x: { display: true, title: { display: true, text: "Date" } },
-            y: { display: true, title: { display: true, text: "Value (USD)" }, ticks: { precision: 0 } }
-          },
-          interaction: {
-            mode: 'index',
-            intersect: false,
-          },
-          plugins: {
-            legend: {
-              labels: {
-                filter: (item, data) => {
-                  const ds = data?.datasets?.[item.datasetIndex];
-                  return ds ? !ds.hidden : true;
-                }
-              }
-            }
-          }
-        }
-      });
-
-      function activeCount() {
-        return historyChart.data.datasets.slice(1).filter(ds => !ds.hidden).length;
-      }
-
-      function computeReturn(arr) {
-        const first = arr.find(v => v !== null && v !== undefined);
-        const last = [...arr].reverse().find(v => v !== null && v !== undefined);
-        if (first === undefined || last === undefined || first === 0) return null;
-        return ((last - first) / first) * 100;
-      }
-
-      function updateReturnSummary() {
-        const summaryEl = document.getElementById("returnSummary");
-        const parts = [];
-        const pReturn = computeReturn(historyChart.data.datasets[0].data);
-        if (pReturn !== null) parts.push({ label: "Portfolio", value: pReturn });
-        historyChart.data.datasets.slice(1).forEach(ds => {
-          if (!ds.hidden) {
-            const r = computeReturn(ds.data);
-            if (r !== null) parts.push({ label: ds.label, value: r });
-          }
-        });
-        summaryEl.textContent = "";
-        parts.forEach(({ label, value }) => {
-          const sign = value > 0 ? "+" : "";
-          const cls = value > 0 ? "text-success" : value < 0 ? "text-danger" : "";
-          const span = document.createElement("span");
-          span.classList.add("ms-3");
-          span.append(document.createTextNode(`${label}: `));
-          const inner = document.createElement("span");
-          if (cls) inner.classList.add(cls);
-          inner.textContent = `${sign}${value.toFixed(2)}%`;
-          span.append(inner);
-          summaryEl.append(span);
-        });
-      }
-
-      function applyRange(range) {
-        const earliest = new Date(fullLabels[0]);
-        const latest = new Date(fullLabels[fullLabels.length - 1]);
-        let start;
-        switch (range) {
-          case "1m":
-            start = new Date(latest);
-            start.setMonth(start.getMonth() - 1);
-            break;
-          case "6m":
-            start = new Date(latest);
-            start.setMonth(start.getMonth() - 6);
-            break;
-          case "1y":
-            start = new Date(latest);
-            start.setFullYear(start.getFullYear() - 1);
-            break;
-          case "5y":
-            start = new Date(latest);
-            start.setFullYear(start.getFullYear() - 5);
-            break;
-          case "ytd":
-            start = new Date(latest.getFullYear(), 0, 1);
-            break;
-          default:
-            start = new Date(earliest);
-        }
-        if (start < earliest) start = earliest;
-        const startIndex = fullLabels.findIndex(d => new Date(d) >= start);
-        const sliceStart = startIndex === -1 ? 0 : startIndex;
-        historyChart.data.labels = fullLabels.slice(sliceStart);
-        historyChart.data.datasets.forEach((ds, idx) => {
-          if (idx === 0) {
-            ds.data = fullPortfolioValues.slice(sliceStart);
-          } else {
-            ds.data = fullBenchmarkValues[idx - 1].slice(sliceStart);
-          }
-        });
-        historyChart.update();
-        updateReturnSummary();
-      }
-
-      function handleBenchmarkToggle(checkbox) {
-        const idx = parseInt(checkbox.dataset.index, 10) + 1;
-        const ds = historyChart.data.datasets[idx];
-        const meta = historyChart.getDatasetMeta(idx);
-        if (checkbox.checked) {
-          if (activeCount() >= 3) {
-            checkbox.checked = false;
-            alert("You can select up to 3 benchmarks.");
-            return;
-          }
-          const color = availableColors.shift();
-          if (!color) {
-            checkbox.checked = false;
-            return;
-          }
-          ds.borderColor = color.border;
-          ds.backgroundColor = color.background;
-          ds.borderWidth = 2;
-          ds.hidden = false;
-          meta.hidden = null;
-          ds._assignedColor = color;
-        } else {
-          ds.hidden = true;
-          meta.hidden = true;
-          if (ds._assignedColor) {
-            availableColors.unshift(ds._assignedColor);
-            ds._assignedColor = null;
-          }
-        }
-        historyChart.update();
-        updateReturnSummary();
-      }
-
-      // Initialize benchmark checkboxes
-      document.querySelectorAll(".benchmark-option").forEach(checkbox => {
-        if (checkbox.checked) {
-          handleBenchmarkToggle(checkbox);
-        }
-        checkbox.addEventListener("change", () => handleBenchmarkToggle(checkbox));
-      });
-
-      // Initialize range buttons
-      const rangeButtons = document.querySelectorAll("#rangeButtons button");
-      rangeButtons.forEach(btn => {
-        btn.addEventListener("click", () => {
-          rangeButtons.forEach(b => b.classList.remove("active"));
-          btn.classList.add("active");
-          applyRange(btn.dataset.range);
-        });
-      });
-
-      // Initial summary
-      updateReturnSummary();
+      {% endif %}
     });
   </script>
 {% endblock %}
-
-
