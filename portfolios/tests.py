@@ -159,6 +159,22 @@ class PublicPortfolioTests(TestCase):
         self.assertNotContains(response, 'id_symbol')
 
 
+class PortfolioExploreTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            'owner@example.com', password='pass', first_name='Owner Name'
+        )
+        self.portfolio = Portfolio.objects.create(
+            user=self.owner,
+            name='Owner Portfolio',
+            substack_url='https://owner.substack.com',
+        )
+
+    def test_display_name_shown_on_card(self):
+        response = self.client.get(reverse('portfolios:portfolio-explore'))
+        self.assertContains(response, 'Owner Name')
+
+
 class PrivatePortfolioTests(TestCase):
     def setUp(self):
         self.owner = User.objects.create_user('owner', password='pass')
