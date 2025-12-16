@@ -1,5 +1,6 @@
 from django.shortcuts import redirect, get_object_or_404, render
 from django.http import JsonResponse
+from django.contrib import messages
 from django.urls import reverse_lazy
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
@@ -130,6 +131,24 @@ def build_portfolio_context(p, include_details=True):
                 "data": [],
             })
 
+    default_benchmarks = p.benchmarks
+
+    if benchmark_data and default_benchmarks:
+        default_set = set(default_benchmarks)
+        ordered_data = []
+
+        for ticker, _ in BENCHMARK_CHOICES:
+            if ticker in default_set:
+                match = next((bm for bm in benchmark_data if bm["ticker"] == ticker), None)
+                if match:
+                    ordered_data.append(match)
+
+        for bm in benchmark_data:
+            if bm["ticker"] not in default_set:
+                ordered_data.append(bm)
+
+        benchmark_data = ordered_data
+
     return {
         "positions": positions if include_details else [],
         "total_value": total_value,
@@ -139,7 +158,7 @@ def build_portfolio_context(p, include_details=True):
         "history_data_json": json.dumps(history_data, cls=DjangoJSONEncoder),
         "benchmark_data": benchmark_data,
         "benchmark_data_json": json.dumps(benchmark_data, cls=DjangoJSONEncoder),
-        "default_benchmarks": p.benchmarks,
+        "default_benchmarks": default_benchmarks,
     }
 
 
@@ -179,6 +198,7 @@ class PortfolioDetailView(LoginRequiredMixin, DetailView):
         ctx["is_owner"] = True
         ctx["private_view"] = False
         ctx["allowed_count"] = self.object.allowed_emails.count()
+        ctx["followers_count"] = self.object.followers.count()
         ctx["order_form"] = OrderForm()
         return ctx
 
@@ -215,6 +235,7 @@ class PublicPortfolioDetailView(DetailView):
         else:
             ctx["is_following"] = False
         ctx["allowed_count"] = self.object.allowed_emails.count()
+        ctx["followers_count"] = self.object.followers.count()
         return ctx
 
 
@@ -597,6 +618,19 @@ def verify_email_change(request):
     pending = request.session.get("pending_email_change")
     if not pending:
         return redirect("portfolios:account-details")
+
+    if request.method == "POST" and request.POST.get("resend"):
+        code = f"{random.randint(0, 999999):06d}"
+        pending["code"] = code
+        request.session["pending_email_change"] = pending
+        send_email(
+            "Verify your new email",
+            f"Your verification code is {code}",
+            [pending["new_email"]],
+            fail_silently=True,
+        )
+        messages.success(request, "A new verification code has been sent.")
+        return redirect("portfolios:account-verify-email")
 
     if request.method == "POST":
         form = EmailVerificationForm(request.POST)

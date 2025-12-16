@@ -25,7 +25,7 @@ class EmailRegistrationForm(forms.Form):
 
 
 class EmailVerificationForm(forms.Form):
-    code = forms.CharField(max_length=6)
+    code = forms.CharField(max_length=6, widget=forms.TextInput(attrs={"class": "input"}))
 
 
 class PortfolioSetupForm(forms.Form):

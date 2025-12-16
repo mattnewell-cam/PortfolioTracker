@@ -48,14 +48,14 @@ class AccountForm(forms.ModelForm):
         label="Display Name",
         max_length=150,
         required=False,
-        widget=forms.TextInput(attrs={"class": "form-control"}),
+        widget=forms.TextInput(attrs={"class": "input flex-1"}),
     )
 
     class Meta:
         model = get_user_model()
         fields = ["email"]
         widgets = {
-            "email": forms.EmailInput(attrs={"class": "form-control"})
+            "email": forms.EmailInput(attrs={"class": "input flex-1"})
         }
 
     def __init__(self, *args, **kwargs):

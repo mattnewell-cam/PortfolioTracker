@@ -1,18 +1,36 @@
 {% extends "portfolios/base.html" %}
+{% load static humanize %}
 
 {% block title %}{{ portfolio.name }}{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
   <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-    <div class="space-y-2">
-      <h1 class="text-3xl font-semibold">{{ portfolio.name }}</h1>
-      {% if portfolio.short_description %}
-        <p class="muted text-base italic">"{{ portfolio.short_description }}"</p>
-      {% endif %}
+    <div class="space-y-3">
+      <div class="space-y-2">
+        <h1 class="text-3xl font-semibold">{{ portfolio.name }}</h1>
+        {% if portfolio.short_description %}
+          <p class="muted text-base italic">"{{ portfolio.short_description }}"</p>
+        {% endif %}
+      </div>
+      <div class="flex flex-wrap items-center gap-4 text-sm text-muted">
+        <div class="flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 7.5 12 4.5l5.25 3m-10.5 3L12 7.5l5.25 3m-10.5 3L12 10.5l5.25 3M12 19.5v-9" />
+          </svg>
+          <span>Joined {{ portfolio.created_at|date:"d M Y" }}</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372A9.375 9.375 0 0 0 24 10.125 9.375 9.375 0 0 0 12.75.75a9.375 9.375 0 0 0-8.362 13.779c.058.112.097.234.113.36L5 22.5l4.225-2.112c.117-.059.242-.098.372-.113A9.325 9.325 0 0 0 12 20.25c1.062 0 2.089-.184 3.037-.522Z" />
+          </svg>
+          <span>{{ followers_count }} follower{{ followers_count|pluralize }}</span>
+        </div>
+      </div>
     </div>
-    {% if is_owner %}
-      <div class="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
+
+    <div class="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
+      {% if is_owner %}
         <form method="post" action="{% url 'portfolios:portfolio-toggle-privacy' %}">
           {% csrf_token %}
           <button type="submit" class="btn-secondary min-w-[9rem]">
@@ -26,98 +44,91 @@
         {% if portfolio.is_private %}
           <a class="btn-secondary min-w-[9rem]" href="{% url 'portfolios:portfolio-allow-list' %}">Allow List ({{ allowed_count }})</a>
         {% endif %}
-      </div>
-    {% endif %}
-  </div>
-
-  {% if not is_owner %}
-    {% if not portfolio.is_private or is_allowed %}
-      {% if user.is_authenticated %}
-        <form method="post" action="{% url 'portfolios:portfolio-follow-toggle' portfolio.pk %}">
-          {% csrf_token %}
-          <button type="submit" class="btn-primary">
-            {% if is_following %}Unfollow Portfolio{% else %}Follow Portfolio{% endif %}
-          </button>
-        </form>
       {% else %}
-        <p>
-          <a class="btn-primary" href="{% url 'login' %}?next={{ request.path }}">Follow Portfolio</a>
-        </p>
+        {% if not portfolio.is_private or is_allowed %}
+          {% if user.is_authenticated %}
+            <form method="post" action="{% url 'portfolios:portfolio-follow-toggle' portfolio.pk %}">
+              {% csrf_token %}
+              <button type="submit" class="btn-primary min-w-[9rem]">
+                {% if is_following %}Unfollow Portfolio{% else %}Follow Portfolio{% endif %}
+              </button>
+            </form>
+          {% else %}
+            <a class="btn-primary min-w-[9rem]" href="{% url 'login' %}?next={{ request.path }}">Follow Portfolio</a>
+          {% endif %}
+        {% endif %}
       {% endif %}
-    {% endif %}
-  {% endif %}
+    </div>
+  </div>
 
   {% if private_view %}
     <p class="muted italic">This portfolio is private. Only the value chart is visible.</p>
   {% endif %}
 
-  {% if not private_view %}
+  {% if is_owner and not private_view %}
   <div class="card">
     <div class="card-header">
       <div class="space-y-1">
         <h2 class="section-title">Buy or Sell Shares</h2>
-        <p class="muted">Cash Balance: ${{ portfolio.cash_balance|floatformat:2 }}</p>
+        <p class="muted">Cash Balance: ${{ portfolio.cash_balance|floatformat:2|intcomma }}</p>
       </div>
     </div>
     <div class="card-content">
-      {% if is_owner %}
-      <form method="post" action="{% url 'portfolios:order-create' %}" class="space-y-4" id="orderForm">
+      <form method="post" action="{% url 'portfolios:order-create' %}" class="space-y-5" id="orderForm">
         {% csrf_token %}
         <input type="hidden" name="symbol" id="id_symbol" required>
 
-        <div class="grid gap-4 lg:grid-cols-2">
-          <div class="space-y-3">
-            <div id="tickerSearch" class="flex gap-2">
-              <input class="input flex-1" id="tickerLookupInput" placeholder="Enter ticker..." aria-label="Enter ticker">
-              <button class="btn-primary" type="button" id="tickerLookupButton">Find</button>
-            </div>
+        <div id="tickerSearch" class="space-y-2">
+          <div class="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
+            <input class="input w-full flex-1" id="tickerLookupInput" placeholder="Enter ticker..." aria-label="Enter ticker">
+            <button class="btn-primary w-full sm:w-36" type="button" id="tickerLookupButton">Find</button>
+          </div>
+        </div>
 
-            <div id="tickerInfo" class="hidden rounded-xl border border-border bg-slate-50 px-4 py-3">
-              <div class="flex items-start justify-between gap-3">
-                <div class="space-y-1">
-                  <div class="muted uppercase text-xs">Company</div>
-                  <div class="text-sm font-semibold" id="tickerCompany"></div>
-                  <div class="muted" id="tickerSymbol"></div>
-                </div>
-                <div class="text-right space-y-1">
-                  <div class="muted uppercase text-xs">Current Price</div>
-                  <div class="text-sm font-semibold" id="tickerPrice"></div>
+        <div id="orderLayout" class="hidden grid gap-4 lg:grid-cols-[2fr_1.2fr] lg:items-stretch">
+          <div id="tickerInfo" class="hidden overflow-hidden rounded-xl border border-border bg-slate-50">
+            <div class="flex h-full items-center">
+              <div class="flex-1 space-y-4 px-4 py-3">
+                <div class="flex items-center justify-between gap-3">
+                  <div class="text-xl font-semibold leading-tight" id="tickerCompany"></div>
                   <span class="badge" id="marketBadge"></span>
                 </div>
+                <div class="flex items-center justify-between gap-3">
+                  <div class="text-lg font-semibold" id="tickerSymbol"></div>
+                  <div class="text-2xl font-semibold text-right" id="tickerPrice"></div>
+                </div>
               </div>
-              <button type="button" class="btn-ghost px-0" id="changeTickerButton">Change ticker</button>
+              <button type="button" class="w-[22%] min-w-[110px] max-w-[140px] bg-slate-200 px-4 text-sm font-semibold text-text transition-colors hover:bg-slate-300" id="changeTickerButton">Change ticker</button>
             </div>
-
-            <div id="tickerError" class="text-danger text-sm"></div>
           </div>
 
-          <div class="hidden space-y-3" id="orderDetails">
-            <div class="grid gap-3 sm:grid-cols-2 sm:items-start">
-              <div class="space-y-2">
-                <input class="input" name="quantity" id="id_quantity" type="number" step="1" min="1" placeholder="Quantity" required disabled>
-                <div class="muted" id="orderAmount"></div>
-              </div>
-              <div class="flex gap-2">
+          <div id="orderDetails" class="hidden rounded-xl border border-border bg-white/80 p-4">
+            <div class="flex h-full flex-col gap-3">
+              <input class="input" name="quantity" id="id_quantity" type="number" step="1" min="1" placeholder="Quantity" required disabled>
+              <div class="muted" id="orderAmount"></div>
+              <div class="mt-auto flex gap-2">
                 <button type="submit" name="side" value="BUY" class="btn-primary order-action-btn w-full" disabled>Buy</button>
                 <button type="submit" name="side" value="SELL" class="btn-danger order-action-btn w-full" disabled>Sell</button>
               </div>
             </div>
           </div>
         </div>
-      </form>
-      {% endif %}
 
-      {% if is_owner and order_form.non_field_errors %}
+        <div id="tickerError" class="text-danger text-sm"></div>
+      </form>
+
+      {% if order_form.non_field_errors %}
         <div class="mt-2 text-sm text-danger">{{ order_form.non_field_errors }}</div>
       {% endif %}
     </div>
   </div>
+  {% endif %}
 
+  {% if not private_view %}
   <div class="card">
     <div class="card-header items-center">
       <div>
         <h2 class="section-title">Current Holdings</h2>
-        <p class="muted">Allocation and current prices</p>
       </div>
     </div>
     <div class="card-content">
@@ -138,48 +149,50 @@
               {% for pos in positions %}
                 <tr>
                   <td class="table-td">{{ pos.symbol }}</td>
-                  <td class="table-td">{{ pos.quantity }}</td>
+                  <td class="table-td">{{ pos.quantity|intcomma }}</td>
                   <td class="table-td">
                     {% if pos.mid_local is not None %}
-                      {{ pos.mid_local|floatformat:2 }} {{ pos.currency }}
+                      {{ pos.mid_local|floatformat:2|intcomma }} {{ pos.currency }}
                     {% else %}
                       N/A
                     {% endif %}
                   </td>
                   <td class="table-td">
-                    {% if pos.fx_rate is not None %}
-                      1 {{ pos.currency }} = ${{ pos.fx_rate|floatformat:4 }}
+                    {% if pos.currency|upper == "USD" %}
+                      -
+                    {% elif pos.fx_rate is not None %}
+                      {{ pos.fx_rate|floatformat:4 }}
                     {% else %}
                       N/A
                     {% endif %}
                   </td>
                   <td class="table-td text-right">
                     {% if pos.value_usd is not None %}
-                      ${{ pos.value_usd|floatformat:2 }}
+                      ${{ pos.value_usd|floatformat:2|intcomma }}
                     {% else %}
                       N/A
                     {% endif %}
                   </td>
                   <td class="table-td text-right">
                     {% if pos.allocation is not None %}
-                      {{ pos.allocation|floatformat:2 }}%
+                      {{ pos.allocation|floatformat:2|intcomma }}%
                     {% else %}
                       N/A
                     {% endif %}
                   </td>
                 </tr>
               {% endfor %}
-              <tr>
+              <tr class="bg-slate-100">
                 <td class="table-td">Cash</td>
                 <td class="table-td"></td>
                 <td class="table-td"></td>
                 <td class="table-td"></td>
-                <td class="table-td text-right">${{ portfolio.cash_balance|floatformat:2 }}</td>
-                <td class="table-td text-right">{{ cash_allocation|floatformat:2 }}%</td>
+                <td class="table-td text-right">${{ portfolio.cash_balance|floatformat:2|intcomma }}</td>
+                <td class="table-td text-right">{{ cash_allocation|floatformat:2|intcomma }}%</td>
               </tr>
-              <tr class="bg-slate-50">
+              <tr class="bg-slate-200">
                 <td class="table-td font-semibold" colspan="4">Total Value</td>
-                <td class="table-td font-semibold text-right">${{ total_value|floatformat:2 }}</td>
+                <td class="table-td font-semibold text-right">${{ total_value|floatformat:2|intcomma }}</td>
                 <td class="table-td font-semibold text-right">100%</td>
               </tr>
             </tbody>
@@ -198,110 +211,112 @@
         <h2 class="section-title">Value Over Time</h2>
         <p class="muted">Track performance and compare benchmarks</p>
       </div>
-      <div class="flex flex-wrap items-center gap-2 sm:ml-auto">
-        <div class="flex flex-wrap gap-2" id="rangeButtons">
-          <button type="button" class="pill pill-active" data-range="max">Max</button>
-          <button type="button" class="pill" data-range="5y">5Y</button>
-          <button type="button" class="pill" data-range="1y">1Y</button>
-          <button type="button" class="pill" data-range="ytd">YTD</button>
-          <button type="button" class="pill" data-range="6m">6M</button>
-          <button type="button" class="pill" data-range="1m">1M</button>
+      <div class="flex w-full flex-col gap-3 sm:ml-auto sm:w-auto">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap gap-2" id="rangeButtons">
+            <button type="button" class="pill pill-active" data-range="max">Max</button>
+            <button type="button" class="pill" data-range="5y">5Y</button>
+            <button type="button" class="pill" data-range="1y">1Y</button>
+            <button type="button" class="pill" data-range="ytd">YTD</button>
+            <button type="button" class="pill" data-range="6m">6M</button>
+            <button type="button" class="pill" data-range="1m">1M</button>
+          </div>
+          <div class="flex flex-wrap items-center gap-3 sm:justify-end">
+            <div id="returnSummary" class="text-right text-sm sm:text-base"></div>
+          </div>
         </div>
-        <div id="returnSummary" class="text-right text-sm sm:text-base"></div>
       </div>
     </div>
     <div class="card-content">
       <div class="h-64 sm:h-80">
         <canvas id="historyChart" class="h-full w-full"></canvas>
       </div>
+      <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div id="chartLegend" class="flex flex-wrap items-center gap-3 text-sm"></div>
+        <div class="relative" id="benchmarkDropdown">
+          <button type="button" id="benchmarkToggle" class="btn-secondary inline-flex items-center gap-2 px-3 py-2">
+            <span class="text-sm font-semibold">Select benchmarks</span>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" />
+            </svg>
+          </button>
+          <div id="benchmarkMenu" class="absolute right-0 z-10 mt-2 min-w-[13rem] rounded-lg border border-border bg-white shadow-lg hidden">
+            <div class="border-b border-border px-3 py-2 text-xs font-medium text-muted">Select up to three.</div>
+            <div class="max-h-64 overflow-y-auto px-3 py-3 flex flex-wrap gap-3" id="benchmarkList">
+              {% for bm in benchmark_data %}
+                <label class="flex items-center gap-2 text-sm text-text">
+                  <input type="checkbox" class="benchmark-toggle h-4 w-4 accent-brand" value="{{ forloop.counter0 }}" {% if bm.ticker in default_benchmarks %}checked{% endif %}>
+                  <span class="{% if bm.ticker in default_benchmarks %}font-semibold{% else %}font-normal{% endif %}">{{ bm.label }} ({{ bm.ticker }})</span>
+                </label>
+              {% endfor %}
+            </div>
+            <div id="benchmarkError" class="border-t border-border px-3 py-2 text-xs text-muted"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <div class="grid gap-6 lg:grid-cols-2">
-    <div class="card">
-      <div class="card-header">
-        <div>
-          <h2 class="section-title">Benchmarks</h2>
-          <p class="muted">Toggle comparisons</p>
-        </div>
-      </div>
-      <div class="card-content space-y-3">
-        {% for bm in benchmark_data %}
-          <label class="flex items-center justify-between rounded-xl border border-border px-4 py-3">
-            <div>
-              <div class="font-semibold text-text">{{ bm.label }}</div>
-              <div class="muted">{{ bm.ticker }}</div>
-            </div>
-            <input
-              class="checkbox benchmark-option"
-              type="checkbox"
-              data-index="{{ forloop.counter0 }}"
-              {% if bm.ticker in default_benchmarks %}checked{% endif %}
-            />
-          </label>
-        {% endfor %}
+  <div class="card mt-6">
+    <div class="card-header">
+      <div>
+        <h2 class="section-title">Recent Orders</h2>
+        <p class="muted">Executed trades</p>
       </div>
     </div>
-
-    <div class="card">
-      <div class="card-header">
-        <div>
-          <h2 class="section-title">Recent Orders</h2>
-          <p class="muted">Executed trades</p>
-        </div>
-      </div>
-      <div class="card-content">
-        {% if orders_data %}
-          <div class="overflow-x-auto">
-            <table class="table">
-              <thead>
+    <div class="card-content">
+      {% if orders_data %}
+        <div class="overflow-x-auto">
+          <table class="table">
+            <thead>
+              <tr>
+                <th class="table-th">When</th>
+                <th class="table-th">Symbol</th>
+                <th class="table-th">Side</th>
+                <th class="table-th">Qty</th>
+                <th class="table-th">Price (Local)</th>
+                <th class="table-th">FX Rate</th>
+                <th class="table-th text-right">Total Value (USD)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for o in orders_data %}
                 <tr>
-                  <th class="table-th">When</th>
-                  <th class="table-th">Symbol</th>
-                  <th class="table-th">Side</th>
-                  <th class="table-th">Qty</th>
-                  <th class="table-th">Price (Local)</th>
-                  <th class="table-th">FX Rate</th>
-                  <th class="table-th text-right">Total Value (USD)</th>
+                  <td class="table-td">{{ o.executed_at|date:"Y-m-d H:i" }}</td>
+                  <td class="table-td">{{ o.symbol }}</td>
+                  <td class="table-td">{{ o.side }}</td>
+                  <td class="table-td">{{ o.quantity|intcomma }}</td>
+                  <td class="table-td">
+                    {% if o.price_local %}
+                      {{ o.price_local|floatformat:2|intcomma }} {{ o.currency }}
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  </td>
+                  <td class="table-td">
+                    {% if o.currency|upper == "USD" %}
+                      -
+                    {% elif o.fx_rate %}
+                      {{ o.fx_rate|floatformat:4 }}
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  </td>
+                  <td class="table-td text-right">
+                    {% if o.total_value_usd %}
+                      ${{ o.total_value_usd|floatformat:2|intcomma }}
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {% for o in orders_data %}
-                  <tr>
-                    <td class="table-td">{{ o.executed_at|date:"Y-m-d H:i" }}</td>
-                    <td class="table-td">{{ o.symbol }}</td>
-                    <td class="table-td">{{ o.side }}</td>
-                    <td class="table-td">{{ o.quantity }}</td>
-                    <td class="table-td">
-                      {% if o.price_local %}
-                        {{ o.price_local|floatformat:2 }} {{ o.currency }}
-                      {% else %}
-                        N/A
-                      {% endif %}
-                    </td>
-                    <td class="table-td">
-                      {% if o.fx_rate %}
-                        1 {{ o.currency }} = ${{ o.fx_rate|floatformat:4 }}
-                      {% else %}
-                        N/A
-                      {% endif %}
-                    </td>
-                    <td class="table-td text-right">
-                      {% if o.total_value_usd %}
-                        ${{ o.total_value_usd|floatformat:2 }}
-                      {% else %}
-                        N/A
-                      {% endif %}
-                    </td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        {% else %}
-          <p class="muted"><em>No orders have been placed yet.</em></p>
-        {% endif %}
-      </div>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="muted"><em>No orders have been placed yet.</em></p>
+      {% endif %}
     </div>
   </div>
 </div>
@@ -324,77 +339,201 @@
       });
 
       const colorPool = [
-        { border: "#2563EB", background: "rgba(37,99,235,0.16)" },
-        { border: "#16A34A", background: "rgba(22,163,74,0.16)" },
-        { border: "#DC2626", background: "rgba(220,38,38,0.12)" }
+        { border: "#2563EB", background: "rgba(37,99,235,0.18)" },
+        { border: "#16A34A", background: "rgba(22,163,74,0.18)" },
+        { border: "#DC2626", background: "rgba(220,38,38,0.14)" },
       ];
-      let availableColors = [...colorPool];
 
       Chart.defaults.font.family = 'Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial';
       Chart.defaults.color = '#0F172A';
       Chart.defaults.borderColor = '#E2E8F0';
-      Chart.defaults.plugins.legend.labels.color = '#64748B';
+      Chart.defaults.plugins.legend.labels.color = '#475569';
 
       const datasets = [{
         label: "Portfolio",
         data: [...fullPortfolioValues],
-        borderColor: "#2563EB",
-        backgroundColor: "rgba(37,99,235,0.12)",
+        borderColor: "#0F172A",
         borderWidth: 3,
-        fill: false,
-        tension: 0.1,
+        fill: true,
+        tension: 0.25,
+        pointRadius: 0,
       }];
 
       benchmarkData.forEach((bm, idx) => {
+        const palette = colorPool[idx % colorPool.length];
         datasets.push({
           label: bm.label,
           data: [...fullBenchmarkValues[idx]],
-          borderColor: "",
-          backgroundColor: "",
+          borderColor: palette.border,
+          backgroundColor: palette.background,
           borderWidth: 2,
           fill: false,
           hidden: true,
-          tension: 0.1,
+          tension: 0.2,
+          pointRadius: 0,
         });
       });
 
       // ===== Instantiate Chart.js =====
       const ctx = document.getElementById("historyChart").getContext("2d");
+      const portfolioGradient = ctx.createLinearGradient(0, 0, 0, 260);
+      portfolioGradient.addColorStop(0, 'rgba(15,23,42,0.25)');
+      portfolioGradient.addColorStop(1, 'rgba(15,23,42,0.08)');
+      datasets[0].backgroundColor = portfolioGradient;
+
+      const usdFormatter = new Intl.NumberFormat(undefined, {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+      });
+
       const historyChart = new Chart(ctx, {
         type: "line",
         data: { labels: [...fullLabels], datasets: datasets },
         options: {
+          maintainAspectRatio: false,
           scales: {
-            x: { display: true, title: { display: true, text: "Date" }, grid: { color: '#E2E8F0' } },
-            y: { display: true, title: { display: true, text: "Value (USD)" }, ticks: { precision: 0 }, grid: { color: '#E2E8F0' } }
+            x: { grid: { color: 'rgba(148,163,184,0.15)', drawBorder: false } },
+            y: {
+              grid: { color: 'rgba(148,163,184,0.12)', drawBorder: false },
+              ticks: {
+                callback: (value) => usdFormatter.format(value),
+              },
+            }
           },
           interaction: {
-            mode: 'index',
+            mode: 'nearest',
             intersect: false,
           },
           plugins: {
-            legend: {
-              labels: {
-                filter: (item, data) => {
-                  const ds = data?.datasets?.[item.datasetIndex];
-                  return ds ? !ds.hidden : true;
-                }
-              }
-            }
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.dataset.label}: ${usdFormatter.format(ctx.parsed.y)}`,
+              },
+              backgroundColor: '#0F172A',
+              titleColor: '#E2E8F0',
+              bodyColor: '#E2E8F0',
+              borderColor: '#334155',
+              borderWidth: 1,
+            },
           }
         }
       });
 
-      function activeCount() {
-        return benchmarkData.filter((_, idx) => !datasets[idx + 1].hidden).length;
-      }
+      const benchmarkCheckboxes = Array.from(document.querySelectorAll('.benchmark-toggle'));
+      const benchmarkError = document.getElementById('benchmarkError');
+      const chartLegend = document.getElementById('chartLegend');
+      const benchmarkToggle = document.getElementById('benchmarkToggle');
+      const benchmarkMenu = document.getElementById('benchmarkMenu');
+      const benchmarkDropdown = document.getElementById('benchmarkDropdown');
+      const maxBenchmarks = 3;
+      let selectedOrder = benchmarkCheckboxes
+        .filter(cb => cb.checked)
+        .map(cb => Number(cb.value));
+
+      const closeBenchmarkMenu = () => benchmarkMenu.classList.add('hidden');
+
+      const renderLegend = () => {
+        const visible = historyChart.data.datasets.filter(ds => !ds.hidden);
+        if (!visible.length) {
+          chartLegend.innerHTML = '<span class="text-xs text-muted">No series selected</span>';
+          return;
+        }
+
+        chartLegend.innerHTML = visible
+          .map(ds => `
+            <span class="flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold text-text">
+              <span class="h-3 w-3 rounded-sm" style="background-color:${ds.borderColor};"></span>
+              ${ds.label}
+            </span>
+          `)
+          .join('');
+      };
+
+      const updateBenchmarkColors = () => {
+        const checkedSet = new Set(benchmarkCheckboxes.filter(cb => cb.checked).map(cb => Number(cb.value)));
+        selectedOrder = selectedOrder.filter(idx => checkedSet.has(idx));
+
+        historyChart.data.datasets.slice(1).forEach((dataset, datasetIdx) => {
+          const fallbackPalette = colorPool[datasetIdx % colorPool.length];
+          dataset.borderColor = fallbackPalette.border;
+          dataset.backgroundColor = fallbackPalette.background;
+        });
+
+        selectedOrder.forEach((bmIdx, orderIdx) => {
+          const palette = colorPool[orderIdx % colorPool.length];
+          const dataset = historyChart.data.datasets[bmIdx + 1];
+          if (dataset) {
+            dataset.borderColor = palette.border;
+            dataset.backgroundColor = palette.background;
+          }
+        });
+      };
+
+      const applyCheckboxState = () => {
+        const checkedBoxes = benchmarkCheckboxes.filter(cb => cb.checked);
+        if (checkedBoxes.length > maxBenchmarks) {
+          checkedBoxes.slice(maxBenchmarks).forEach(cb => { cb.checked = false; });
+        }
+        benchmarkCheckboxes.forEach((checkbox) => {
+          const idx = Number(checkbox.value);
+          const dataset = historyChart.data.datasets[idx + 1];
+          if (dataset) {
+            dataset.hidden = !checkbox.checked;
+          }
+        });
+        updateBenchmarkColors();
+        historyChart.update();
+        renderLegend();
+      };
+
+      benchmarkCheckboxes.forEach((checkbox) => {
+        checkbox.addEventListener('change', () => {
+          const idx = Number(checkbox.value);
+          if (checkbox.checked) {
+            if (!selectedOrder.includes(idx)) {
+              selectedOrder.push(idx);
+            }
+          } else {
+            selectedOrder = selectedOrder.filter(entry => entry !== idx);
+          }
+
+          const checkedCount = benchmarkCheckboxes.filter(cb => cb.checked).length;
+          if (checkedCount > maxBenchmarks) {
+            checkbox.checked = false;
+            selectedOrder = selectedOrder.filter(entry => entry !== idx);
+            benchmarkError.textContent = 'You can select up to three benchmarks.';
+            return;
+          }
+          benchmarkError.textContent = '';
+          applyCheckboxState();
+        });
+      });
+
+      benchmarkError.textContent = '';
+      applyCheckboxState();
+
+      benchmarkToggle.addEventListener('click', (event) => {
+        event.stopPropagation();
+        benchmarkMenu.classList.toggle('hidden');
+      });
+
+      document.addEventListener('click', (event) => {
+        if (!benchmarkDropdown.contains(event.target)) {
+          closeBenchmarkMenu();
+        }
+      });
 
       function getRangeIndices(range) {
         const endIndex = fullLabels.length - 1;
         switch (range) {
           case '1m': return [Math.max(0, endIndex - 30), endIndex];
           case '6m': return [Math.max(0, endIndex - 180), endIndex];
-          case 'ytd': return [fullLabels.findIndex(date => date.startsWith(new Date().getFullYear().toString())), endIndex];
+          case 'ytd': {
+            const ytdStart = fullLabels.findIndex(date => date.startsWith(new Date().getFullYear().toString()));
+            return [ytdStart === -1 ? 0 : ytdStart, endIndex];
+          }
           case '1y': return [Math.max(0, endIndex - 365), endIndex];
           case '5y': return [Math.max(0, endIndex - 365 * 5), endIndex];
           default: return [0, endIndex];
@@ -436,22 +575,6 @@
       });
       applyRange('max');
 
-      // ===== Benchmark toggles =====
-      const bmOptions = document.querySelectorAll('.benchmark-option');
-      bmOptions.forEach((checkbox, idx) => {
-        const dataset = historyChart.data.datasets[idx + 1];
-        const colors = availableColors.shift() || colorPool[idx % colorPool.length];
-        dataset.borderColor = colors.border;
-        dataset.backgroundColor = colors.background;
-        if (checkbox.checked) {
-          dataset.hidden = false;
-        }
-        checkbox.addEventListener('change', () => {
-          dataset.hidden = !checkbox.checked;
-          historyChart.update();
-        });
-      });
-
       // ===== Buy/Sell order widget =====
       {% if is_owner %}
       const lookupButton = document.getElementById('tickerLookupButton');
@@ -468,11 +591,12 @@
       const quantityInput = document.getElementById('id_quantity');
       const actionButtons = document.querySelectorAll('.order-action-btn');
       const orderDetails = document.getElementById('orderDetails');
+      const orderLayout = document.getElementById('orderLayout');
       const orderForm = document.getElementById('orderForm');
       const orderAmount = document.getElementById('orderAmount');
       const lookupUrl = "{% url 'portfolios:quote-lookup' %}";
 
-      const usdFormatter = new Intl.NumberFormat(undefined, {
+      const orderUsdFormatter = new Intl.NumberFormat(undefined, {
         style: 'currency',
         currency: 'USD'
       });
@@ -498,6 +622,7 @@
         lookupInput.value = '';
         tickerInfo.classList.add('hidden');
         tickerSearch.classList.remove('hidden');
+        orderLayout.classList.add('hidden');
         errorBox.textContent = '';
         orderAmount.textContent = '';
         setOrderEnabled(false);
@@ -530,7 +655,7 @@
 
         const totalLocal = qty * price;
         const totalUsd = totalLocal * fxRate;
-        orderAmount.textContent = `Order value: ${usdFormatter.format(totalUsd)}`;
+        orderAmount.textContent = `Order value: ${orderUsdFormatter.format(totalUsd)}`;
       };
 
       const showQuote = (data) => {
@@ -545,6 +670,7 @@
         symbolInput.value = data.symbol;
         tickerSearch.classList.add('hidden');
         tickerInfo.classList.remove('hidden');
+        orderLayout.classList.remove('hidden');
         setOrderEnabled(true);
         updateOrderAmount();
         quantityInput.focus();

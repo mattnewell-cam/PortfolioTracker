@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.humanize',
 
     # our apps
     "portfolios",
@@ -93,6 +94,9 @@ STORAGES = {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
+
+if DEBUG:
+    STORAGES["staticfiles"]["BACKEND"] = "django.contrib.staticfiles.storage.StaticFilesStorage"
 
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [ BASE_DIR / "static" ]

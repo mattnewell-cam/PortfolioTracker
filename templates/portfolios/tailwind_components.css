@@ -104,7 +104,7 @@
   }
 
   .table thead {
-    @apply bg-slate-50;
+    @apply bg-slate-100;
   }
 
   .table-th {

@@ -9,12 +9,15 @@
       {% csrf_token %}
       <div class="space-y-2">
         <label for="{{ form.code.id_for_label }}" class="">Verification Code</label>
-        {{ form.code.as_widget(attrs={'class': 'input'}) }}
+        {{ form.code }}
         {% if form.code.errors %}
           <div class="text-danger text-sm">{{ form.code.errors|join:', ' }}</div>
         {% endif %}
       </div>
-      <button type="submit" class="btn-primary">Verify</button>
+      <div class="flex flex-wrap gap-2">
+        <button type="submit" class="btn-primary">Verify</button>
+        <button type="submit" name="resend" value="1" formnovalidate class="btn-secondary">Resend verification link</button>
+      </div>
     </form>
   </div>
 {% endblock %}
