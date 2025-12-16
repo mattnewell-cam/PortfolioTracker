@@ -1,0 +1,31 @@
+name: Keep Render Awake
+
+on:
+  schedule:
+    - cron: "*/14 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping-render:
+    runs-on: ubuntu-latest
+    env:
+      TZ: Europe/London
+    steps:
+      - name: Ping Render app
+        env:
+          RENDER_PING_URL: ${{ secrets.RENDER_PING_URL }}
+        run: |
+          current_hour=$(date +%H)
+
+          if [ "$current_hour" -lt 10 ] || [ "$current_hour" -ge 22 ]; then
+            echo "Current UK hour ($current_hour) outside 10:00-22:00 window; skipping ping."
+            exit 0
+          fi
+
+          if [ -z "$RENDER_PING_URL" ]; then
+            echo "RENDER_PING_URL secret is not set; skipping ping."
+            exit 0
+          fi
+
+          echo "Pinging $RENDER_PING_URL"
+          curl --head --fail --show-error --max-time 10 "$RENDER_PING_URL"
