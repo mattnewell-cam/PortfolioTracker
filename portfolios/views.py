@@ -11,6 +11,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.utils import timezone
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
+from django.conf import settings
 from decimal import Decimal
 import random
 
@@ -470,12 +471,12 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
             form.add_error(None, f"Could not fetch live quote for “{symbol}”.")
             return self.form_invalid(form)
 
-        # if market_state != "REGULAR":
-        #     form.add_error(
-        #         None,
-        #         "Order failed because the market is currently closed."
-        #     )
-        #     return self.form_invalid(form)
+        if not settings.DEBUG and market_state != "REGULAR":
+            form.add_error(
+                None,
+                "Order failed because the market is currently closed."
+            )
+            return self.form_invalid(form)
 
         # 2) Compute execution_price & validate
         if side == "BUY":
