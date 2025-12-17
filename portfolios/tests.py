@@ -4,7 +4,7 @@ from django.urls import reverse
 from unittest.mock import Mock, patch
 from django.utils import timezone
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.core.management import call_command
+from django.core.management import call_command, CommandError
 from io import BytesIO
 import importlib
 from unittest import skipUnless
@@ -676,3 +676,52 @@ class SnapshotAdjustmentTests(TestCase):
         self.assertEqual(self.portfolio.cash_balance, Decimal('3'))
         snapshot = PortfolioSnapshot.objects.get(portfolio=self.portfolio)
         self.assertEqual(snapshot.total_value, Decimal('23'))
+
+
+class DeleteSnapshotsCommandTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user('deleter', password='pass')
+        self.portfolio = Portfolio.objects.create(
+            user=self.user,
+            name='Delete Portfolio',
+            substack_url='https://delete.substack.com',
+            holdings={'AAPL': 1},
+            cash_balance=Decimal('10'),
+        )
+        PortfolioSnapshot.objects.create(
+            portfolio=self.portfolio,
+            timestamp=timezone.now(),
+            total_value=Decimal('10'),
+            benchmark_values={},
+        )
+
+    def test_requires_confirmation_flag(self):
+        with self.assertRaises(CommandError):
+            call_command('delete_snapshots')
+
+    def test_deletes_snapshots_only(self):
+        call_command('delete_snapshots', yes=True)
+
+        self.assertFalse(PortfolioSnapshot.objects.exists())
+        self.assertTrue(Portfolio.objects.filter(pk=self.portfolio.pk).exists())
+
+    def test_can_scope_to_single_portfolio(self):
+        other_user = User.objects.create_user('keeper', password='pass')
+        other_portfolio = Portfolio.objects.create(
+            user=other_user,
+            name='Keep Portfolio',
+            substack_url='https://keep.substack.com',
+            holdings={'MSFT': 2},
+            cash_balance=Decimal('20'),
+        )
+        PortfolioSnapshot.objects.create(
+            portfolio=other_portfolio,
+            timestamp=timezone.now(),
+            total_value=Decimal('20'),
+            benchmark_values={},
+        )
+
+        call_command('delete_snapshots', yes=True, portfolio=self.portfolio.pk)
+
+        self.assertFalse(PortfolioSnapshot.objects.filter(portfolio=self.portfolio).exists())
+        self.assertTrue(PortfolioSnapshot.objects.filter(portfolio=other_portfolio).exists())
