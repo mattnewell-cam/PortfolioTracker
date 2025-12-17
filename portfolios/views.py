@@ -471,7 +471,7 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
             form.add_error(None, f"Could not fetch live quote for “{symbol}”.")
             return self.form_invalid(form)
 
-        if side == "BUY" and not settings.DEBUG and market_state != "REGULAR":
+        if not settings.DEBUG and market_state != "REGULAR":
             form.add_error(
                 None,
                 "Order failed because the market is currently closed."
