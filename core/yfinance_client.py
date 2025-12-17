@@ -1,13 +1,46 @@
-import os
-import requests
 import yfinance as yf
 
+def _safe_get(container, key):
+    """Fetch a value from a mapping-like or attribute-bearing object."""
 
-def _quote_from_info(symbol, info, fx_rate_cache=None):
+    if container is None:
+        return None
+
+    try:
+        return container.get(key)
+    except Exception:
+        pass
+
+    try:
+        return getattr(container, key)
+    except Exception:
+        return None
+
+
+def _choose_price(info, fast_info):
+    """Pick the freshest available price, preferring intraday quotes."""
+
+    intraday_price = _safe_get(fast_info, "last_price")
+    if intraday_price is None:
+        intraday_price = info.get("regularMarketPrice") or info.get("currentPrice")
+
+    if intraday_price is None:
+        intraday_price = (
+            _safe_get(fast_info, "regularMarketPreviousClose")
+            or _safe_get(fast_info, "regular_market_previous_close")
+        )
+
+    if intraday_price is None:
+        intraday_price = info.get("regularMarketPreviousClose")
+
+    return intraday_price
+
+
+def _quote_from_info(symbol, info, fx_rate_cache=None, fast_info=None):
     fx_rate_cache = fx_rate_cache if fx_rate_cache is not None else {}
 
-    currency = info.get("currency")
-    price = info.get("currentPrice", None)
+    currency = _safe_get(fast_info, "currency") or info.get("currency")
+    price = _choose_price(info, fast_info)
 
     # UK tickers report in pence (GBp); convert to pounds for display and FX
     fx_currency = currency
@@ -35,7 +68,7 @@ def _quote_from_info(symbol, info, fx_rate_cache=None):
         "currency": fx_currency,
         "native_currency": currency,
         "fx_rate": fx_rate,
-        "market_state": info.get("marketState", None),
+        "market_state": info.get("marketState", None) or _safe_get(fast_info, "market_state"),
         "shortName": info.get("shortName"),
         "longName": info.get("longName"),
         "symbol": info.get("symbol") or symbol,
@@ -48,8 +81,9 @@ def get_quote(symbol):
     """
     ticker = yf.Ticker(symbol)
     info = ticker.info
+    fast_info = getattr(ticker, "fast_info", None)
 
-    return _quote_from_info(symbol, info)
+    return _quote_from_info(symbol, info, fast_info=fast_info)
 
 
 def get_quotes(symbols):
@@ -65,14 +99,17 @@ def get_quotes(symbols):
 
     for symbol in unique_symbols:
         try:
-            info = tickers.tickers.get(symbol)
-            if info is None:
+            ticker_obj = tickers.tickers.get(symbol)
+            if ticker_obj is None:
                 continue
-            quotes[symbol] = _quote_from_info(symbol, info.info, fx_rate_cache)
+            quotes[symbol] = _quote_from_info(
+                symbol,
+                ticker_obj.info,
+                fx_rate_cache,
+                fast_info=getattr(ticker_obj, "fast_info", None),
+            )
         except Exception:
             # Skip symbols that fail to fetch; they can be retried individually
             continue
 
     return quotes
-
-
