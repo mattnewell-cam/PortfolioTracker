@@ -7,7 +7,9 @@ def _safe_get(container, key):
         return None
 
     try:
-        return container.get(key)
+        value = container.get(key)
+        if value is not None:
+            return value
     except Exception:
         pass
 
