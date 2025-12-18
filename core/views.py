@@ -31,6 +31,7 @@ def register(request):
                 "code": code,
             }
             send_email(
+                "verify@trackstack.uk",
                 "Verify your account",
                 f"Your verification code is {code}",
                 [form.cleaned_data["email"]],

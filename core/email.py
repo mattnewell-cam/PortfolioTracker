@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 SENDINBLUE_ENDPOINT = "https://api.brevo.com/v3/smtp/email"
 
 
-def send_email(subject: str, message: str, recipient_list: Iterable[str], fail_silently: bool = True):
+def send_email(sender: str, subject: str, message: str, recipient_list: Iterable[str], fail_silently: bool = True):
     recipients = [r for r in recipient_list if r]
     if not recipients:
         return False
@@ -17,6 +17,7 @@ def send_email(subject: str, message: str, recipient_list: Iterable[str], fail_s
     api_key = getattr(settings, "EMAIL_API_KEY", "")
     if not api_key:
         msg = "EMAIL_API_KEY is not configured; skipping email send."
+        print(msg)
         if fail_silently:
             logger.warning(msg)
             return False
