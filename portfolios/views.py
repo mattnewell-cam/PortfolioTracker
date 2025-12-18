@@ -525,6 +525,7 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
         )
         if follower_emails:
             send_email(
+                "notifications@trackstack.uk",
                 f"New trade in {self.portfolio.name}",
                 f"{self.portfolio.user.username} executed {side} {quantity} {symbol} at {execution_price} {currency}",
                 follower_emails,
@@ -598,6 +599,7 @@ def account_details(request):
                     "code": code,
                 }
                 send_email(
+                    "verify@trackstack.uk",
                     "Verify your new email",
                     f"Your verification code is {code}",
                     [new_email],
@@ -625,6 +627,7 @@ def verify_email_change(request):
         pending["code"] = code
         request.session["pending_email_change"] = pending
         send_email(
+            "verify@trackstack.uk",
             "Verify your new email",
             f"Your verification code is {code}",
             [pending["new_email"]],
