@@ -209,6 +209,9 @@ class PublicPortfolioDetailView(DetailView):
     template_name = "portfolios/portfolio_detail.html"
     context_object_name = "portfolio"
 
+    def get_object(self, queryset=None):
+        return get_object_or_404(Portfolio, url_tag=self.kwargs["url_tag"])
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         is_owner = (
@@ -252,23 +255,23 @@ def toggle_privacy(request):
 
 @require_POST
 @login_required
-def toggle_follow(request, pk):
-    portfolio = get_object_or_404(Portfolio, pk=pk)
+def toggle_follow(request, url_tag):
+    portfolio = get_object_or_404(Portfolio, url_tag=url_tag)
     if portfolio.user == request.user:
-        return redirect("portfolios:portfolio-public-detail", pk=pk)
+        return redirect("portfolios:portfolio-public-detail", url_tag=url_tag)
     identifier = request.user.email or request.user.username
     allowed = (
         not portfolio.is_private
         or portfolio.allowed_emails.filter(email=identifier).exists()
     )
     if not allowed:
-        return redirect("portfolios:portfolio-public-detail", pk=pk)
+        return redirect("portfolios:portfolio-public-detail", url_tag=url_tag)
     rel, created = PortfolioFollower.objects.get_or_create(
         portfolio=portfolio, follower=request.user
     )
     if not created:
         rel.delete()
-    return redirect("portfolios:portfolio-public-detail", pk=pk)
+    return redirect("portfolios:portfolio-public-detail", url_tag=url_tag)
 
 
 @login_required

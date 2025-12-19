@@ -3,6 +3,8 @@ from django.contrib.auth import get_user_model
 from django.db.models import JSONField
 from django.core.validators import MinValueValidator
 from decimal import Decimal
+from django.utils.text import slugify
+from urllib.parse import urlparse
 
 
 User = get_user_model()
@@ -25,9 +27,25 @@ class Portfolio(models.Model):
     benchmarks = JSONField(default=list)
     is_private = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    url_tag = models.SlugField(max_length=255, unique=True, null=True, blank=True)
 
     def __str__(self):
         return f"{self.user.username} – {self.name}"
+
+    def save(self, *args, **kwargs):
+        if not self.url_tag and self.substack_url:
+            parsed = urlparse(self.substack_url)
+            host = (parsed.hostname or "").lower()
+            tag = None
+            if host.endswith(".substack.com"):
+                tag = host.rsplit(".substack.com", 1)[0]
+            elif host in {"substack.com", "www.substack.com"}:
+                path = parsed.path.strip("/")
+                if path:
+                    tag = slugify(path.lstrip("@"))
+            if tag:
+                self.url_tag = slugify(tag)
+        super().save(*args, **kwargs)
 
 
 class PortfolioFollower(models.Model):
