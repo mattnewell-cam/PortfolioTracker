@@ -1,0 +1,6 @@
+Django==5.2
+dj-database-url==3.0.1
+pytz
+python-dotenv
+yfinance
+psycopg[binary]
