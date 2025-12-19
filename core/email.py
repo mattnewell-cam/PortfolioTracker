@@ -2,6 +2,7 @@ import logging
 from typing import Iterable
 
 import requests
+import os
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
@@ -14,7 +15,7 @@ def send_email(sender: str, subject: str, message: str, recipient_list: Iterable
     if not recipients:
         return False
 
-    api_key = getattr(settings, "EMAIL_API_KEY", "")
+    api_key = os.getenv("EMAIL_API_KEY", "")
     if not api_key:
         msg = "EMAIL_API_KEY is not configured; skipping email send."
         print(msg)
@@ -23,8 +24,9 @@ def send_email(sender: str, subject: str, message: str, recipient_list: Iterable
             return False
         raise ValueError(msg)
 
+
     payload = {
-        "sender": {"email": settings.EMAIL_SENDER},
+        "sender": {"email": sender, "name": "TrackStack"},
         "to": [{"email": email} for email in recipients],
         "subject": subject,
         "textContent": message,

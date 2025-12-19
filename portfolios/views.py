@@ -523,11 +523,13 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
         follower_emails = list(
             self.portfolio.followers.values_list("follower__email", flat=True)
         )
+
+        verb = "bought" if side == "BUY" else "sold"
         if follower_emails:
             send_email(
                 "notifications@trackstack.uk",
-                f"New trade in {self.portfolio.name}",
-                f"{self.portfolio.user.username} executed {side} {quantity} {symbol} at {execution_price} {currency}",
+                f"New trade in {self.portfolio.name}'s Portfolio",
+                f"{self.portfolio.name} {verb} {quantity} shares of {symbol} at {currency} {round(execution_price, 3)}\n\n ",
                 follower_emails,
                 fail_silently=True,
             )
