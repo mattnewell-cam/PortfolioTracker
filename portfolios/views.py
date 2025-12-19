@@ -94,12 +94,12 @@ def build_portfolio_context(p, include_details=True):
     history_data = []
     for snap in p.snapshots.all().order_by("timestamp"):
         history_data.append({
-            "date": snap.timestamp.date().isoformat(),
+            "date": snap.timestamp.isoformat(),
             "value": snap.total_value,
         })
     if not history_data:
         history_data.append({
-            "date": timezone.now().date().isoformat(),
+            "date": timezone.now().isoformat(),
             "value": total_value,
         })
 
@@ -108,11 +108,11 @@ def build_portfolio_context(p, include_details=True):
     if snaps:
         per_ticker = {t: [] for t, _ in BENCHMARK_CHOICES}
         for snap in snaps:
-            date_iso = snap.timestamp.date().isoformat()
+            timestamp_iso = snap.timestamp.isoformat()
             for ticker, _ in BENCHMARK_CHOICES:
                 price = snap.benchmark_values.get(ticker)
                 if price is not None:
-                    per_ticker[ticker].append({"date": date_iso, "price_usd": price})
+                    per_ticker[ticker].append({"date": timestamp_iso, "price_usd": price})
         for ticker, name in BENCHMARK_CHOICES:
             pts = per_ticker[ticker]
             if pts:
