@@ -18,11 +18,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          python-version: '3.13'
+          cache: "pip"
+          dependency-path: requirements-actions.txt
       - name: Run snapshot command
         run: |
           python manage.py take_snapshots
