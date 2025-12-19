@@ -90,15 +90,12 @@ class RegistrationTests(TestCase):
 
         response = self.client.post(reverse('verify-portfolio'))
         self.assertRedirects(response, reverse('portfolios:portfolio-detail'))
-        self.assertTrue(
-            Portfolio.objects.filter(
-                user__username='new@example.com',
-                substack_url='https://example.substack.com',
-                name='Example Feed',
-                short_description='Short desc',
-                benchmarks=[BENCHMARK_CHOICES[0][0]],
-            ).exists()
-        )
+        created = Portfolio.objects.get(user__username='new@example.com')
+        self.assertEqual(created.substack_url, 'https://example.substack.com')
+        self.assertEqual(created.name, 'Example Feed')
+        self.assertEqual(created.short_description, 'Short desc')
+        self.assertEqual(created.benchmarks, [BENCHMARK_CHOICES[0][0]])
+        self.assertEqual(created.url_tag, 'example')
 
     def test_duplicate_substack_url_not_allowed(self):
         existing = User.objects.create_user('existing@example.com', password='pass')

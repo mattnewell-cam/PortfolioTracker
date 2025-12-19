@@ -32,19 +32,25 @@ class Portfolio(models.Model):
     def __str__(self):
         return f"{self.user.username} – {self.name}"
 
+    @staticmethod
+    def derive_url_tag(substack_url: str | None) -> str | None:
+        if not substack_url:
+            return None
+        parsed = urlparse(substack_url)
+        host = (parsed.hostname or "").lower()
+        if host.endswith(".substack.com"):
+            return slugify(host.rsplit(".substack.com", 1)[0])
+        if host in {"substack.com", "www.substack.com"}:
+            path = parsed.path.strip("/")
+            if path:
+                return slugify(path.lstrip("@"))
+        return None
+
     def save(self, *args, **kwargs):
-        if not self.url_tag and self.substack_url:
-            parsed = urlparse(self.substack_url)
-            host = (parsed.hostname or "").lower()
-            tag = None
-            if host.endswith(".substack.com"):
-                tag = host.rsplit(".substack.com", 1)[0]
-            elif host in {"substack.com", "www.substack.com"}:
-                path = parsed.path.strip("/")
-                if path:
-                    tag = slugify(path.lstrip("@"))
-            if tag:
-                self.url_tag = slugify(tag)
+        if not self.url_tag:
+            derived = self.derive_url_tag(self.substack_url)
+            if derived:
+                self.url_tag = derived
         super().save(*args, **kwargs)
 
 
