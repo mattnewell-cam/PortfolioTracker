@@ -109,33 +109,26 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+PROD_DATABASE_URL = os.getenv("PROD_DATABASE_URL")
 DEV_DATABASE_URL = os.getenv("DEV_DATABASE_URL")
 
-if DEBUG and DEV_DATABASE_URL:
-    DATABASES = {
-        "default": dj_database_url.parse(
-            DEV_DATABASE_URL,
-            conn_max_age=600,
-            ssl_require=True,
-        )
-    }
-elif DATABASE_URL:
-    DATABASES = {
-        "default": dj_database_url.parse(
-            DATABASE_URL,
-            conn_max_age=600,
-            ssl_require=True,  # Render Postgres typically uses SSL
-        )
-    }
+if DEBUG:
+    db_url = DEV_DATABASE_URL or None
 else:
-    # local dev fallback
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
-    }
+    db_url = PROD_DATABASE_URL
+
+if not db_url:
+    raise ImproperlyConfigured(
+        "Database not configured. Set PROD_DATABASE_URL (or DEV_DATABASE_URL for DEBUG=True)."
+    )
+
+DATABASES = {
+    "default": dj_database_url.parse(
+        db_url,
+        conn_max_age=600,
+        ssl_require=not DEBUG,
+    )
+}
 
 
 # Password validation
