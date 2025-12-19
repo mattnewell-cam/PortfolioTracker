@@ -27,7 +27,7 @@
                 <td class="table-td">${{ p.cash_balance|floatformat:2|intcomma }}</td>
                 <td class="table-td">{{ p.created_at|date:"Y-m-d H:i" }}</td>
                 <td class="table-td text-right">
-                  <a class="btn-secondary btn-sm" href="{% url 'portfolios:portfolio-detail' p.pk %}">View</a>
+                  <a class="btn-secondary btn-sm" href="{% url 'portfolios:portfolio-detail' tag=p.url_tag %}">View</a>
                 </td>
               </tr>
             {% empty %}

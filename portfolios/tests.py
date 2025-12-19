@@ -153,7 +153,7 @@ class PublicPortfolioTests(TestCase):
 
     def test_public_detail_hides_order_link_for_non_owner(self):
         response = self.client.get(
-            reverse('portfolios:portfolio-public-detail', args=[self.portfolio.pk])
+            reverse('portfolios:portfolio-public-detail', kwargs={'tag': self.portfolio.url_tag})
         )
         self.assertContains(response, 'Owner Portfolio')
         self.assertNotContains(response, 'id_symbol')
@@ -198,7 +198,7 @@ class PrivatePortfolioTests(TestCase):
 
     def test_public_view_hides_positions_and_orders(self):
         response = self.client.get(
-            reverse('portfolios:portfolio-public-detail', args=[self.portfolio.pk])
+            reverse('portfolios:portfolio-public-detail', kwargs={'tag': self.portfolio.url_tag})
         )
         self.assertContains(response, 'Value Over Time')
         self.assertContains(response, 'This portfolio is private')
@@ -235,12 +235,12 @@ class AllowListTests(TestCase):
         viewer = User.objects.create_user('viewer@example.com', password='pass')
         self.client.login(username='viewer@example.com', password='pass')
         response = self.client.get(
-            reverse('portfolios:portfolio-public-detail', args=[self.portfolio.pk])
+            reverse('portfolios:portfolio-public-detail', kwargs={'tag': self.portfolio.url_tag})
         )
         self.assertFalse(response.context['private_view'])
         self.assertNotEqual(response.context['positions'], [])
         self.client.post(
-            reverse('portfolios:portfolio-follow-toggle', args=[self.portfolio.pk])
+            reverse('portfolios:portfolio-follow-toggle', kwargs={'tag': self.portfolio.url_tag})
         )
         self.assertTrue(
             self.portfolio.followers.filter(follower=viewer).exists()
@@ -250,7 +250,7 @@ class AllowListTests(TestCase):
         other = User.objects.create_user('other@example.com', password='pass')
         self.client.login(username='other@example.com', password='pass')
         self.client.post(
-            reverse('portfolios:portfolio-follow-toggle', args=[self.portfolio.pk])
+            reverse('portfolios:portfolio-follow-toggle', kwargs={'tag': self.portfolio.url_tag})
         )
         self.assertFalse(
             self.portfolio.followers.filter(follower=other).exists()
@@ -360,7 +360,7 @@ class PortfolioPrivacyToggleTests(TestCase):
         other = User.objects.create_user('viewer', password='pass')
         self.client.login(username='viewer', password='pass')
         response = self.client.get(
-            reverse('portfolios:portfolio-public-detail', args=[self.portfolio.pk])
+            reverse('portfolios:portfolio-public-detail', kwargs={'tag': self.portfolio.url_tag})
         )
         self.assertNotContains(response, 'Make Portfolio')
 
@@ -473,13 +473,13 @@ class FollowPortfolioTests(TestCase):
         )
 
     def test_follow_requires_login(self):
-        url = reverse('portfolios:portfolio-follow-toggle', args=[self.portfolio.pk])
+        url = reverse('portfolios:portfolio-follow-toggle', kwargs={'tag': self.portfolio.url_tag})
         response = self.client.post(url)
         self.assertRedirects(response, f'/accounts/login/?next={url}')
 
     def test_follow_and_unfollow(self):
         self.client.login(username='viewer', password='pass')
-        url = reverse('portfolios:portfolio-follow-toggle', args=[self.portfolio.pk])
+        url = reverse('portfolios:portfolio-follow-toggle', kwargs={'tag': self.portfolio.url_tag})
         self.client.post(url)
         self.assertTrue(
             self.portfolio.followers.filter(follower=self.viewer).exists()
@@ -503,7 +503,7 @@ class FollowPortfolioTests(TestCase):
         }
         # viewer follows portfolio
         self.client.login(username='viewer', password='pass')
-        follow_url = reverse('portfolios:portfolio-follow-toggle', args=[self.portfolio.pk])
+        follow_url = reverse('portfolios:portfolio-follow-toggle', kwargs={'tag': self.portfolio.url_tag})
         self.client.post(follow_url)
         self.client.logout()
         # owner places trade
@@ -703,7 +703,7 @@ class DeleteSnapshotsCommandTests(TestCase):
         call_command('delete_snapshots', yes=True)
 
         self.assertFalse(PortfolioSnapshot.objects.exists())
-        self.assertTrue(Portfolio.objects.filter(pk=self.portfolio.pk).exists())
+        self.assertTrue(Portfolio.objects.filter(pk=self.portfolio.url_tag).exists())
 
     def test_can_scope_to_single_portfolio(self):
         other_user = User.objects.create_user('keeper', password='pass')
@@ -721,7 +721,7 @@ class DeleteSnapshotsCommandTests(TestCase):
             benchmark_values={},
         )
 
-        call_command('delete_snapshots', yes=True, portfolio=self.portfolio.pk)
+        call_command('delete_snapshots', yes=True, portfolio=self.portfolio.url_tag)
 
         self.assertFalse(PortfolioSnapshot.objects.filter(portfolio=self.portfolio).exists())
         self.assertTrue(PortfolioSnapshot.objects.filter(portfolio=other_portfolio).exists())

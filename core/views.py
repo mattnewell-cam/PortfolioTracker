@@ -125,10 +125,13 @@ def verify_portfolio(request):
                 except Exception:
                     pass
 
+                url_tag = pending["substack_url"].split("://")[1].split(".substack")[0]
+
                 Portfolio.objects.create(
                     user=request.user,
                     name=title,
                     substack_url=pending["substack_url"],
+                    url_tag=url_tag,
                     benchmarks=pending["benchmarks"],
                     short_description=subtitle,
                 )

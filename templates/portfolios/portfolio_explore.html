@@ -17,7 +17,7 @@
       <div class="card">
         <div class="card-content flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h5 class="text-lg font-semibold mb-2"><a href="{% url 'portfolios:portfolio-public-detail' p.pk %}">{{ p.name }}</a></h5>
+            <h5 class="text-lg font-semibold mb-2"><a href="{% url 'portfolios:portfolio-public-detail' tag=p.url_tag %}">{{ p.name }}</a></h5>
             <div class="flex flex-wrap items-center gap-4 text-sm text-muted">
               {% if p.user.first_name %}
                 <div class="flex items-center gap-2">

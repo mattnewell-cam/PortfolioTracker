@@ -14,6 +14,7 @@ class Portfolio(models.Model):
     )
     name = models.CharField(max_length=100)
     substack_url = models.URLField(unique=True, blank=True, null=True)
+    url_tag = models.SlugField(max_length=100, unique=True)
     short_description = models.CharField(max_length=200, blank=True, null=True)
     cash_balance = models.DecimalField(
         max_digits=20,

@@ -47,7 +47,7 @@
       {% else %}
         {% if not portfolio.is_private or is_allowed %}
           {% if user.is_authenticated %}
-            <form method="post" action="{% url 'portfolios:portfolio-follow-toggle' portfolio.pk %}">
+            <form method="post" action="{% url 'portfolios:portfolio-follow-toggle' portfolio.url_tag %}">
               {% csrf_token %}
               <button type="submit" class="btn-primary min-w-[9rem]">
                 {% if is_following %}Unfollow Portfolio{% else %}Follow Portfolio{% endif %}
