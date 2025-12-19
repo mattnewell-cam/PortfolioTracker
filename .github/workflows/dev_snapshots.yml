@@ -1,4 +1,4 @@
-name: Daily snapshots
+name: Dev Snapshots
 
 on:
   schedule:
@@ -13,9 +13,8 @@ jobs:
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
       DEV_DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
       PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
-      DEBUG: 'False'
-      # DEBUG: 'True'
-      ALLOWED_HOSTS: '127.0.0.1,localhost'
+      DEBUG: 'True'
+      ALLOWED_HOSTS: "127.0.0.1,localhost,trackstack.uk,www.trackstack.uk"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
