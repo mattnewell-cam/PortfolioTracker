@@ -36,11 +36,11 @@ class OrderForm(forms.ModelForm):
 
 
 class AllowedEmailForm(forms.Form):
-    email = forms.EmailField()
+    email = forms.EmailField(widget=forms.EmailInput(attrs={"class": "input"}))
 
 
 class AllowedEmailUploadForm(forms.Form):
-    file = forms.FileField()
+    file = forms.FileField(widget=forms.ClearableFileInput(attrs={"class": "input"}))
 
 
 class AccountForm(forms.ModelForm):
@@ -79,4 +79,3 @@ class AccountForm(forms.ModelForm):
         if commit:
             user.save()
         return user
-
