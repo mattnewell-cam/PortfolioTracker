@@ -11,7 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
-      EMAIL_HOST_PASSWORD: ${{ secrets.EMAIL_HOST_PASSWORD }}
+      DEV_DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
+      PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
       DEBUG: 'False'
       # DEBUG: 'True'
       ALLOWED_HOSTS: '127.0.0.1,localhost'
