@@ -20,7 +20,12 @@ jobs:
         with:
           python-version: '3.13'
           cache: "pip"
-          dependency-path: requirements-actions.txt
+          cache-dependency-path: requirements-actions.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-actions.txt
+          
       - name: Run snapshot command
         run: |
           python manage.py take_snapshots
