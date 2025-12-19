@@ -49,7 +49,7 @@
             <input type="hidden" name="action" value="add_email" />
             <div class="space-y-2">
               {{ email_form.email.label_tag }}
-              {{ email_form.email.as_widget(attrs={'class': 'input'}) }}
+              {{ email_form.email }}
             </div>
             <button type="submit" class="btn-primary">Add</button>
           </form>
@@ -58,7 +58,7 @@
             <input type="hidden" name="action" value="upload" />
             <div class="space-y-2">
               {{ upload_form.file.label_tag }}
-              {{ upload_form.file.as_widget(attrs={'class': 'input'}) }}
+              {{ upload_form.file }}
             </div>
             <button type="submit" class="btn-secondary">Upload CSV/Excel</button>
           </form>
