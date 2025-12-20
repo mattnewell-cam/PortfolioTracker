@@ -135,6 +135,10 @@ def verify_portfolio(request):
                     benchmarks=pending["benchmarks"],
                     short_description=subtitle,
                 )
+                display_name = pending["display_name"]
+                if request.user.first_name != display_name:
+                    request.user.first_name = display_name
+                    request.user.save(update_fields=["first_name"])
                 del request.session["pending_portfolio"]
                 return redirect("portfolios:portfolio-detail")
         except requests.RequestException:
