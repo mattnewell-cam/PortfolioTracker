@@ -458,8 +458,14 @@ class ExplorePageTests(TestCase):
             holdings={'AAPL': 5},
         )
         with patch('portfolios.views.get_quote') as mock_get_quote:
-            self.client.get(reverse('portfolios:portfolio-explore'))
-        mock_get_quote.assert_not_called()
+            mock_get_quote.return_value = {
+                'price': 100,
+                'currency': 'USD',
+                'fx_rate': 1,
+            }
+            response = self.client.get(reverse('portfolios:portfolio-explore'))
+        mock_get_quote.assert_called_once_with('AAPL')
+        self.assertContains(response, '$500.00')
 
 
 class FollowPortfolioTests(TestCase):
