@@ -90,15 +90,17 @@ class RegistrationTests(TestCase):
 
         response = self.client.post(reverse('verify-portfolio'))
         self.assertRedirects(response, reverse('portfolios:portfolio-detail'))
+        user = User.objects.get(username='new@example.com')
         self.assertTrue(
             Portfolio.objects.filter(
-                user__username='new@example.com',
+                user=user,
                 substack_url='https://example.substack.com',
                 name='Example Feed',
                 short_description='Short desc',
                 benchmarks=[BENCHMARK_CHOICES[0][0]],
             ).exists()
         )
+        self.assertEqual(user.first_name, 'Example')
 
     def test_duplicate_substack_url_not_allowed(self):
         existing = User.objects.create_user('existing@example.com', password='pass')
@@ -144,7 +146,7 @@ class DefaultRedirectTests(TestCase):
 
 class PublicPortfolioTests(TestCase):
     def setUp(self):
-        self.owner = User.objects.create_user('owner', password='pass')
+        self.owner = User.objects.create_user('owner', password='pass', first_name='Owner Name')
         self.portfolio = Portfolio.objects.create(
             user=self.owner,
             name='Owner Portfolio',
@@ -157,6 +159,11 @@ class PublicPortfolioTests(TestCase):
         )
         self.assertContains(response, 'Owner Portfolio')
         self.assertNotContains(response, 'id_symbol')
+
+    def test_portfolio_detail_shows_display_name(self):
+        self.client.login(username='owner', password='pass')
+        response = self.client.get(reverse('portfolios:portfolio-detail'))
+        self.assertContains(response, 'Owner Name')
 
 
 class PortfolioExploreTests(TestCase):
