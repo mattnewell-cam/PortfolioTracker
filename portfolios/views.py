@@ -38,24 +38,35 @@ except ImportError:  # pragma: no cover
     load_workbook = None
 
 
+def _get_position_value(symbol, qty):
+    """Return tuple of (mid_local, currency, fx_rate, value_usd) for a holding."""
+    try:
+        quote = get_quote(symbol)
+        price_val = quote.get("price")
+        currency = quote.get("currency")
+        fx_rate_val = quote.get("fx_rate")
+        if price_val is not None and fx_rate_val is not None:
+            mid_local = Decimal(str(price_val))
+            fx_rate = Decimal(str(fx_rate_val))
+            value_usd = mid_local * fx_rate * Decimal(str(qty))
+            return mid_local, currency, fx_rate, value_usd
+    except Exception:
+        pass
+    return None, None, None, None
+
+
 def build_portfolio_context(p, include_details=True):
     """Return context data for a portfolio."""
     positions = []
     total_value = p.cash_balance
-    if include_details:
-        for symbol, qty in p.holdings.items():
-            mid_local = currency = fx_rate = value_usd = None
-            try:
-                quote = get_quote(symbol)
-                price_val = quote.get("price")
-                currency = quote.get("currency")
-                fx_rate_val = quote.get("fx_rate")
-                if price_val is not None and fx_rate_val is not None:
-                    mid_local = Decimal(str(price_val))
-                    fx_rate = Decimal(str(fx_rate_val))
-                    value_usd = mid_local * fx_rate * Decimal(str(qty))
-            except Exception:
-                pass
+    for symbol, qty in p.holdings.items():
+        mid_local = currency = fx_rate = value_usd = None
+        if include_details:
+            mid_local, currency, fx_rate, value_usd = _get_position_value(symbol, qty)
+        else:
+            _, _, _, value_usd = _get_position_value(symbol, qty)
+
+        if include_details:
             positions.append({
                 "symbol": symbol,
                 "quantity": qty,
@@ -64,8 +75,9 @@ def build_portfolio_context(p, include_details=True):
                 "fx_rate": fx_rate,
                 "value_usd": value_usd,
             })
-            if value_usd is not None:
-                total_value += value_usd
+
+        if value_usd is not None:
+            total_value += value_usd
 
     cash_allocation = None
     if include_details and total_value > 0:
@@ -398,7 +410,9 @@ class PortfolioExploreView(ListView):
             if snap:
                 p.total_value_cached = snap.total_value
             else:
-                p.total_value_cached = p.cash_balance
+                p.total_value_cached = build_portfolio_context(
+                    p, include_details=False
+                )["total_value"]
         ctx["search_query"] = self.request.GET.get("q", "")
         return ctx
 
