@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth import get_user_model
 
-from .models import Portfolio, Order
+from .models import Portfolio, Order, NotificationSetting
 from .constants import BENCHMARK_CHOICES
 
 
@@ -79,3 +79,23 @@ class AccountForm(forms.ModelForm):
         if commit:
             user.save()
         return user
+
+
+class NotificationSettingForm(forms.Form):
+    preference = forms.ChoiceField(
+        choices=NotificationSetting.PREFERENCE_CHOICES,
+        widget=forms.RadioSelect,
+        label="Trade notifications",
+    )
+
+    def __init__(self, *args, user=None, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+        if user:
+            self.fields["preference"].initial = NotificationSetting.for_user(user).preference
+
+    def save(self):
+        setting = NotificationSetting.for_user(self.user)
+        setting.preference = self.cleaned_data["preference"]
+        setting.save()
+        return setting
