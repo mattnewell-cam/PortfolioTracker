@@ -9,7 +9,7 @@ from io import BytesIO
 import importlib
 from unittest import skipUnless
 
-from .models import Portfolio, Order, PortfolioSnapshot, PortfolioAllowedEmail
+from .models import Portfolio, Order, PortfolioSnapshot, PortfolioAllowedEmail, NotificationSetting
 from decimal import Decimal
 from .constants import BENCHMARK_CHOICES
 from .views import build_portfolio_context
@@ -629,6 +629,102 @@ class AccountDetailsTests(TestCase):
         self.user.refresh_from_db()
         self.assertEqual(self.user.email, 'new@example.com')
         self.assertNotIn('pending_email_change', self.client.session)
+
+    def test_notification_setting_can_be_updated(self):
+        response = self.client.post(
+            reverse('portfolios:account-details'),
+            {'action': 'notifications', 'preference': NotificationSetting.PREFERENCE_WEEKLY},
+        )
+        self.assertRedirects(response, reverse('portfolios:account-details'))
+        setting = NotificationSetting.for_user(self.user)
+        self.assertEqual(setting.preference, NotificationSetting.PREFERENCE_WEEKLY)
+
+
+class NotificationPreferenceTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            'owner@example.com', email='owner@example.com', password='pass'
+        )
+        self.client.login(username='owner@example.com', password='pass')
+        self.portfolio = Portfolio.objects.create(
+            user=self.owner,
+            name='Owner Portfolio',
+            substack_url='https://owner.substack.com',
+            url_tag='owner-portfolio',
+            holdings={'AAPL': 10},
+        )
+        self.immediate_follower = User.objects.create_user(
+            'immediate@example.com', email='immediate@example.com', password='pass'
+        )
+        self.weekly_follower = User.objects.create_user(
+            'weekly@example.com', email='weekly@example.com', password='pass'
+        )
+        self.none_follower = User.objects.create_user(
+            'none@example.com', email='none@example.com', password='pass'
+        )
+        weekly_setting = NotificationSetting.for_user(self.weekly_follower)
+        weekly_setting.preference = NotificationSetting.PREFERENCE_WEEKLY
+        weekly_setting.save()
+        none_setting = NotificationSetting.for_user(self.none_follower)
+        none_setting.preference = NotificationSetting.PREFERENCE_NONE
+        none_setting.save()
+        self.portfolio.followers.create(follower=self.immediate_follower)
+        self.portfolio.followers.create(follower=self.weekly_follower)
+        self.portfolio.followers.create(follower=self.none_follower)
+
+    @patch('portfolios.views.get_quote')
+    @patch('portfolios.views.send_email')
+    def test_only_immediate_followers_receive_trade_emails(self, mock_send, mock_quote):
+        mock_quote.return_value = {
+            "price": 10,
+            "currency": "USD",
+            "fx_rate": 1,
+            "bid": 10,
+            "ask": 10,
+            "traded_today": True,
+            "market_state": "REGULAR",
+        }
+        self.client.post(
+            reverse('portfolios:order-create'),
+            {'symbol': 'AAPL', 'quantity': 1, 'side': 'BUY'},
+        )
+        self.assertTrue(mock_send.called)
+        recipients = mock_send.call_args.args[3]
+        self.assertEqual(recipients, [self.immediate_follower.email])
+
+
+class WeeklyNotificationCommandTests(TestCase):
+    @patch('portfolios.management.commands.send_weekly_notifications.send_email')
+    def test_weekly_command_sends_summary_to_weekly_followers(self, mock_send):
+        owner = User.objects.create_user('owner2@example.com', email='owner2@example.com', password='pass')
+        portfolio = Portfolio.objects.create(
+            user=owner,
+            name='Owner Portfolio 2',
+            substack_url='https://owner2.substack.com',
+            url_tag='owner-portfolio-2',
+        )
+        follower = User.objects.create_user(
+            'weekly2@example.com', email='weekly2@example.com', password='pass'
+        )
+        setting = NotificationSetting.for_user(follower)
+        setting.preference = NotificationSetting.PREFERENCE_WEEKLY
+        setting.save()
+        portfolio.followers.create(follower=follower)
+        Order.objects.create(
+            portfolio=portfolio,
+            symbol='AAPL',
+            side='BUY',
+            quantity=1,
+            price_executed=100,
+            currency='USD',
+            fx_rate=1,
+        )
+
+        call_command('send_weekly_notifications')
+
+        mock_send.assert_called_once()
+        recipients = mock_send.call_args.args[3]
+        self.assertEqual(recipients, [follower.email])
 
 
 class SnapshotAdjustmentTests(TestCase):

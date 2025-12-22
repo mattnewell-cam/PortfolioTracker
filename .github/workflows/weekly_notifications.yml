@@ -1,0 +1,31 @@
+name: Weekly Notifications
+
+on:
+  schedule:
+    - cron: '0 9 * * MON'
+  workflow_dispatch:
+
+jobs:
+  send-weekly-notifications:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    env:
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+      EMAIL_API_KEY: ${{ secrets.EMAIL_API_KEY }}
+      DEBUG: 'False'
+      ALLOWED_HOSTS: "127.0.0.1,localhost,trackstack.uk,www.trackstack.uk"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: "pip"
+          cache-dependency-path: requirements-actions.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-actions.txt
+      - name: Send weekly notifications
+        run: |
+          python manage.py send_weekly_notifications
