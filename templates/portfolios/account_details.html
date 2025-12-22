@@ -4,72 +4,70 @@
 {% block content %}
   <div class="space-y-6">
     <h1 class="text-3xl font-semibold">Account Details</h1>
-    <div class="grid gap-6 lg:grid-cols-2">
-      <div class="card">
-        <div class="card-content space-y-4">
-          <form method="post" class="space-y-4">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="account">
-            {% if form.non_field_errors %}
-              <div class="rounded-xl border border-danger/20 bg-red-50 px-4 py-3 text-danger text-sm">{{ form.non_field_errors }}</div>
+    <div class="card">
+      <div class="card-content space-y-6">
+        <form method="post" class="space-y-4">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="account">
+          {% if form.non_field_errors %}
+            <div class="rounded-xl border border-danger/20 bg-red-50 px-4 py-3 text-danger text-sm">{{ form.non_field_errors }}</div>
+          {% endif %}
+          <div class="space-y-2">
+            <label for="{{ form.display_name.id_for_label }}">Display Name</label>
+            <div class="flex gap-2">
+              {{ form.display_name }}
+              <button type="button" class="btn-secondary" id="edit-display-name">Edit</button>
+            </div>
+            {% if form.display_name.errors %}
+              <div class="text-sm text-danger">{{ form.display_name.errors|join:', ' }}</div>
             {% endif %}
-            <div class="space-y-2">
-              <label for="{{ form.display_name.id_for_label }}">Display Name</label>
-              <div class="flex gap-2">
-                {{ form.display_name }}
-                <button type="button" class="btn-secondary" id="edit-display-name">Edit</button>
-              </div>
-              {% if form.display_name.errors %}
-                <div class="text-sm text-danger">{{ form.display_name.errors|join:', ' }}</div>
-              {% endif %}
+          </div>
+          <div class="space-y-2">
+            <label for="{{ form.email.id_for_label }}">Email</label>
+            <div class="flex gap-2">
+              {{ form.email }}
+              <button type="button" class="btn-secondary" id="edit-email">Edit</button>
             </div>
-            <div class="space-y-2">
-              <label for="{{ form.email.id_for_label }}">Email</label>
-              <div class="flex gap-2">
-                {{ form.email }}
-                <button type="button" class="btn-secondary" id="edit-email">Edit</button>
-              </div>
-              {% if form.email.errors %}
-                <div class="text-sm text-danger">{{ form.email.errors|join:', ' }}</div>
-              {% endif %}
-            </div>
-            <button type="submit" class="btn-primary" id="save-btn" disabled>Save changes</button>
-          </form>
-        </div>
-      </div>
-      <div>
+            {% if form.email.errors %}
+              <div class="text-sm text-danger">{{ form.email.errors|join:', ' }}</div>
+            {% endif %}
+          </div>
+          <button type="submit" class="btn-primary" id="save-btn" disabled>Save changes</button>
+        </form>
         {% if portfolio %}
-        <div class="card h-full">
-          <div class="card-content space-y-2">
+          <div class="space-y-2 border-t border-border pt-4">
             <h2 class="section-title">Linked Substack</h2>
             <p class="muted"><strong class="text-text">Substack URL:</strong> {{ portfolio.substack_url }}</p>
             <p class="muted"><strong class="text-text">Substack Name:</strong> {{ portfolio.name }}</p>
           </div>
-        </div>
         {% endif %}
-        <div class="card">
-          <div class="card-content space-y-4">
-            <h2 class="section-title">Notification Settings</h2>
-            <form method="post" class="space-y-4">
-              {% csrf_token %}
-              <input type="hidden" name="action" value="notifications">
+      </div>
+    </div>
+
+    <div class="space-y-4">
+      <h2 class="text-3xl font-semibold">Notification Settings</h2>
+      <div class="card">
+        <div class="card-content space-y-4">
+          <h3 class="section-title">Notification Settings</h3>
+          <form method="post" class="space-y-4">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="notifications">
+            <div class="space-y-2">
+              <p class="muted">Choose how you want to hear about trades in portfolios you follow.</p>
               <div class="space-y-2">
-                <p class="muted">Choose how you want to hear about trades in portfolios you follow.</p>
-                <div class="space-y-2">
-                  {% for radio in notification_form.preference %}
-                    <label class="flex items-center gap-2">
-                      {{ radio.tag }}
-                      <span class="text-sm text-text">{{ radio.choice_label }}</span>
-                    </label>
-                  {% endfor %}
-                </div>
-                {% if notification_form.preference.errors %}
-                  <div class="text-sm text-danger">{{ notification_form.preference.errors|join:', ' }}</div>
-                {% endif %}
+                {% for radio in notification_form.preference %}
+                  <label class="flex items-center gap-2">
+                    {{ radio.tag }}
+                    <span class="text-sm text-text">{{ radio.choice_label }}</span>
+                  </label>
+                {% endfor %}
               </div>
-              <button type="submit" class="btn-primary">Save notification settings</button>
-            </form>
-          </div>
+              {% if notification_form.preference.errors %}
+                <div class="text-sm text-danger">{{ notification_form.preference.errors|join:', ' }}</div>
+              {% endif %}
+            </div>
+            <button type="submit" class="btn-primary">Save notification settings</button>
+          </form>
         </div>
       </div>
     </div>
