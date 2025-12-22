@@ -16,12 +16,13 @@ class Command(BaseCommand):
             "orders", "followers__follower__notification_setting"
         )
         sent_count = 0
+        notifications_by_user = {}
 
         for portfolio in portfolios:
-            recent_orders = portfolio.orders.filter(executed_at__gte=since).order_by(
-                "executed_at"
+            recent_orders = list(
+                portfolio.orders.filter(executed_at__gte=since).order_by("executed_at")
             )
-            if not recent_orders.exists():
+            if not recent_orders:
                 continue
 
             for follower_rel in portfolio.followers.select_related(
@@ -45,18 +46,36 @@ class Command(BaseCommand):
                     f"{order.quantity} x {order.symbol} at {order.currency} {order.price_executed}"
                     for order in recent_orders
                 ]
-                body = (
-                    f"Here's your weekly summary for {portfolio.name}:\n"
-                    + "\n".join(lines)
+                notifications_by_user.setdefault(
+                    follower.id,
+                    {
+                        "user": follower,
+                        "portfolios": [],
+                    },
+                )["portfolios"].append(
+                    {
+                        "name": portfolio.name,
+                        "lines": lines,
+                    }
                 )
-                send_email(
-                    "notifications@trackstack.uk",
-                    f"Weekly trades for {portfolio.name}",
-                    body,
-                    [follower.email],
-                    fail_silently=True,
+
+        for notification in notifications_by_user.values():
+            follower = notification["user"]
+            sections = []
+            for portfolio_summary in notification["portfolios"]:
+                section = "**__" + portfolio_summary["name"] + "__**\n" + "\n".join(
+                    portfolio_summary["lines"]
                 )
-                sent_count += 1
+                sections.append(section)
+            body = "Here's your weekly summary:\n\n" + "\n\n".join(sections)
+            send_email(
+                "notifications@trackstack.uk",
+                "Your weekly trade summaries",
+                body,
+                [follower.email],
+                fail_silently=True,
+            )
+            sent_count += 1
 
         self.stdout.write(
             self.style.SUCCESS(f"Sent {sent_count} weekly notification emails.")
