@@ -41,7 +41,7 @@ class Command(BaseCommand):
                     continue
 
                 lines = [
-                    f"{order.executed_at.date()}: "
+                    f"{order.executed_at.strftime("%d %b")}: "
                     f"{portfolio.name} {'bought' if order.side == 'BUY' else 'sold'} "
                     f"{order.quantity} x {order.symbol} at {order.currency} {order.price_executed}"
                     for order in recent_orders
@@ -63,7 +63,7 @@ class Command(BaseCommand):
             follower = notification["user"]
             sections = []
             for portfolio_summary in notification["portfolios"]:
-                section = "**__" + portfolio_summary["name"] + "__**\n" + "\n".join(
+                section = "<strong><u>" + portfolio_summary["name"] + "</u></strong>\n" + "\n".join(
                     portfolio_summary["lines"]
                 )
                 sections.append(section)
