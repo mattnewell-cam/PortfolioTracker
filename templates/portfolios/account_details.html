@@ -9,6 +9,7 @@
         <div class="card-content space-y-4">
           <form method="post" class="space-y-4">
             {% csrf_token %}
+            <input type="hidden" name="action" value="account">
             {% if form.non_field_errors %}
               <div class="rounded-xl border border-danger/20 bg-red-50 px-4 py-3 text-danger text-sm">{{ form.non_field_errors }}</div>
             {% endif %}
@@ -46,6 +47,30 @@
           </div>
         </div>
         {% endif %}
+        <div class="card">
+          <div class="card-content space-y-4">
+            <h2 class="section-title">Notification Settings</h2>
+            <form method="post" class="space-y-4">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="notifications">
+              <div class="space-y-2">
+                <p class="muted">Choose how you want to hear about trades in portfolios you follow.</p>
+                <div class="space-y-2">
+                  {% for radio in notification_form.preference %}
+                    <label class="flex items-center gap-2">
+                      {{ radio.tag }}
+                      <span class="text-sm text-text">{{ radio.choice_label }}</span>
+                    </label>
+                  {% endfor %}
+                </div>
+                {% if notification_form.preference.errors %}
+                  <div class="text-sm text-danger">{{ notification_form.preference.errors|join:', ' }}</div>
+                {% endif %}
+              </div>
+              <button type="submit" class="btn-primary">Save notification settings</button>
+            </form>
+          </div>
+        </div>
       </div>
     </div>
   </div>

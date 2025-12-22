@@ -17,7 +17,7 @@ import random
 
 from core.yfinance_client import get_quote
 from core.email import send_email
-from .models import Portfolio, Order, PortfolioSnapshot, PortfolioFollower, PortfolioAllowedEmail
+from .models import Portfolio, Order, PortfolioSnapshot, PortfolioFollower, PortfolioAllowedEmail, NotificationSetting
 from .constants import BENCHMARK_CHOICES
 from .forms import (
     PortfolioForm,
@@ -25,6 +25,7 @@ from .forms import (
     AllowedEmailForm,
     AllowedEmailUploadForm,
     AccountForm,
+    NotificationSettingForm,
 )
 from core.forms import EmailVerificationForm
 import yfinance as yf
@@ -268,7 +269,7 @@ def toggle_privacy(request):
 @require_POST
 @login_required
 def toggle_follow(request, tag):
-    portfolio = get_object_or_404(Portfolio, tag=tag)
+    portfolio = get_object_or_404(Portfolio, url_tag=tag)
     if portfolio.user == request.user:
         return redirect("portfolios:portfolio-public-detail", tag=tag)
     identifier = request.user.email or request.user.username
@@ -537,9 +538,19 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
                 self.portfolio.holdings[symbol] = remaining
 
         self.portfolio.save()
-        follower_emails = list(
-            self.portfolio.followers.values_list("follower__email", flat=True)
-        )
+        follower_emails = []
+        for follower_rel in self.portfolio.followers.select_related(
+            "follower__notification_setting"
+        ):
+            follower = follower_rel.follower
+            setting = getattr(follower, "notification_setting", None)
+            preference = (
+                setting.preference
+                if setting
+                else NotificationSetting.PREFERENCE_IMMEDIATE
+            )
+            if preference == NotificationSetting.PREFERENCE_IMMEDIATE and follower.email:
+                follower_emails.append(follower.email)
 
         verb = "bought" if side == "BUY" else "sold"
         if follower_emails:
@@ -600,38 +611,52 @@ def portfolio_history(request):
 @login_required
 def account_details(request):
     portfolio = Portfolio.objects.filter(user=request.user).first()
+    notification_form = NotificationSettingForm(user=request.user)
+    form = AccountForm(instance=request.user)
     if request.method == "POST":
-        form = AccountForm(request.POST, instance=request.user)
-        old_email = request.user.email
-        if form.is_valid():
-            user = request.user
-            new_display = form.cleaned_data.get("display_name", "")
-            new_email = form.cleaned_data.get("email") or old_email
-            email_changed = new_email.lower() != old_email.lower()
-            if new_display != user.first_name:
-                user.first_name = new_display
-                user.save(update_fields=["first_name"])
-            if email_changed:
-                code = f"{random.randint(0, 999999):06d}"
-                request.session["pending_email_change"] = {
-                    "new_email": new_email,
-                    "code": code,
-                }
-                send_email(
-                    "verify@trackstack.uk",
-                    "Verify your new email",
-                    f"Your verification code is {code}",
-                    [new_email],
-                    fail_silently=True,
+        action = request.POST.get("action")
+        if action == "notifications":
+            notification_form = NotificationSettingForm(
+                request.POST, user=request.user
+            )
+            if notification_form.is_valid():
+                notification_form.save()
+                messages.success(
+                    request, "Notification preferences updated successfully."
                 )
-                return redirect("portfolios:account-verify-email")
-            return redirect("portfolios:account-details")
+                return redirect("portfolios:account-details")
+        else:
+            form = AccountForm(request.POST, instance=request.user)
+            old_email = request.user.email
+            if form.is_valid():
+                user = request.user
+                new_display = form.cleaned_data.get("display_name", "")
+                new_email = form.cleaned_data.get("email") or old_email
+                email_changed = new_email.lower() != old_email.lower()
+                if new_display != user.first_name:
+                    user.first_name = new_display
+                    user.save(update_fields=["first_name"])
+                if email_changed:
+                    code = f"{random.randint(0, 999999):06d}"
+                    request.session["pending_email_change"] = {
+                        "new_email": new_email,
+                        "code": code,
+                    }
+                    send_email(
+                        "verify@trackstack.uk",
+                        "Verify your new email",
+                        f"Your verification code is {code}",
+                        [new_email],
+                        fail_silently=True,
+                    )
+                    return redirect("portfolios:account-verify-email")
+                return redirect("portfolios:account-details")
     else:
         form = AccountForm(instance=request.user)
     return render(
         request,
         "portfolios/account_details.html",
-        {"portfolio": portfolio, "form": form},
+        {"portfolio": portfolio, "form": form, "notification_form": notification_form},
     )
 
 

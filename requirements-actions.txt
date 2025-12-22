@@ -4,3 +4,4 @@ pytz
 python-dotenv
 yfinance
 psycopg[binary]
+requests

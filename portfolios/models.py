@@ -2,10 +2,39 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.db.models import JSONField
 from django.core.validators import MinValueValidator
+import uuid
 from decimal import Decimal
 
 
 User = get_user_model()
+
+
+class NotificationSetting(models.Model):
+    PREFERENCE_IMMEDIATE = "immediate"
+    PREFERENCE_WEEKLY = "weekly"
+    PREFERENCE_NONE = "none"
+
+    PREFERENCE_CHOICES = [
+        (PREFERENCE_IMMEDIATE, "Every trade"),
+        (PREFERENCE_WEEKLY, "Weekly summary"),
+        (PREFERENCE_NONE, "No notifications"),
+    ]
+
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name="notification_setting"
+    )
+    preference = models.CharField(
+        max_length=20, choices=PREFERENCE_CHOICES, default=PREFERENCE_IMMEDIATE
+    )
+
+    def __str__(self):
+        return f"Notifications for {self.user}: {self.preference}"
+
+    @classmethod
+    def for_user(cls, user):
+        setting, _ = cls.objects.get_or_create(user=user)
+        return setting
+
 
 class Portfolio(models.Model):
     """A single portfolio associated with each user."""
@@ -14,7 +43,7 @@ class Portfolio(models.Model):
     )
     name = models.CharField(max_length=100)
     substack_url = models.URLField(unique=True, blank=True, null=True)
-    url_tag = models.SlugField(max_length=100, unique=True)
+    url_tag = models.SlugField(max_length=100, unique=True, default=uuid.uuid4)
     short_description = models.CharField(max_length=200, blank=True, null=True)
     cash_balance = models.DecimalField(
         max_digits=20,
