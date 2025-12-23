@@ -132,6 +132,97 @@ class RegistrationTests(TestCase):
         self.assertNotIn('pending_portfolio', self.client.session)
 
 
+class DeletedPortfolioRecreationTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            'owner@example.com',
+            email='owner@example.com',
+            password='pass',
+            first_name='Owner',
+        )
+        self.client.login(username='owner@example.com', password='pass')
+        self.portfolio = Portfolio.objects.create(
+            user=self.user,
+            name='Old Name',
+            substack_url='https://old.substack.com',
+            holdings={'AAPL': 5},
+            cash_balance=Decimal('50000.00'),
+            url_tag='old-tag',
+            is_deleted=True,
+            is_private=True,
+        )
+
+    @patch('core.views.feedparser.parse')
+    @patch('core.views.requests.get')
+    def test_add_portfolio_restores_deleted_when_same_substack(self, mock_get, mock_parse):
+        response = self.client.post(
+            reverse('add-portfolio'),
+            {
+                'display_name': 'Updated Name',
+                'substack_url': 'https://old.substack.com',
+                'benchmarks': [BENCHMARK_CHOICES[0][0]],
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        nonce = self.client.session['pending_portfolio']['nonce']
+        mock_about = Mock()
+        mock_about.text = f"about page with {nonce}"
+        mock_feed = Mock(feed={'title': 'Restored Title', 'subtitle': 'Restored Desc'})
+        mock_get.return_value = mock_about
+        mock_parse.return_value = mock_feed
+
+        verify_response = self.client.post(reverse('verify-portfolio'))
+        self.assertRedirects(verify_response, reverse('portfolios:portfolio-detail'))
+
+        self.portfolio.refresh_from_db()
+        self.assertFalse(self.portfolio.is_deleted)
+        self.assertEqual(self.portfolio.name, 'Restored Title')
+        self.assertEqual(self.portfolio.holdings, {'AAPL': 5})
+        self.assertEqual(self.portfolio.substack_url, 'https://old.substack.com')
+
+    @patch('core.views.feedparser.parse')
+    @patch('core.views.requests.get')
+    def test_add_portfolio_allows_new_substack_after_delete(self, mock_get, mock_parse):
+        follower = User.objects.create_user('follower@example.com', password='pass')
+        self.portfolio.followers.create(follower=follower)
+        self.portfolio.orders.create(
+            symbol='AAPL',
+            side='BUY',
+            quantity=1,
+            price_executed=Decimal('10'),
+            currency='USD',
+            fx_rate=Decimal('1'),
+        )
+        self.portfolio.snapshots.create(timestamp=timezone.now(), total_value=Decimal('10'))
+        response = self.client.post(
+            reverse('add-portfolio'),
+            {
+                'display_name': 'New Name',
+                'substack_url': 'https://new.substack.com',
+                'benchmarks': [BENCHMARK_CHOICES[0][0]],
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        nonce = self.client.session['pending_portfolio']['nonce']
+        mock_about = Mock()
+        mock_about.text = f"about page with {nonce}"
+        mock_feed = Mock(feed={'title': 'New Title', 'subtitle': 'New Desc'})
+        mock_get.return_value = mock_about
+        mock_parse.return_value = mock_feed
+
+        verify_response = self.client.post(reverse('verify-portfolio'))
+        self.assertRedirects(verify_response, reverse('portfolios:portfolio-detail'))
+
+        self.portfolio.refresh_from_db()
+        self.assertFalse(self.portfolio.is_deleted)
+        self.assertEqual(self.portfolio.substack_url, 'https://new.substack.com')
+        self.assertEqual(self.portfolio.holdings, {})
+        self.assertEqual(self.portfolio.cash_balance, Decimal('100000.00'))
+        self.assertEqual(self.portfolio.orders.count(), 0)
+        self.assertEqual(self.portfolio.snapshots.count(), 0)
+        self.assertEqual(self.portfolio.followers.count(), 0)
+
+
 class DefaultRedirectTests(TestCase):
     def test_root_redirects_to_login_when_anonymous(self):
         response = self.client.get('/', follow=True)

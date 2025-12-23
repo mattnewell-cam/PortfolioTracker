@@ -29,6 +29,10 @@ class EmailVerificationForm(forms.Form):
 
 
 class PortfolioSetupForm(forms.Form):
+    def __init__(self, *args, user=None, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+
     display_name = forms.CharField(label="Display Name")
     substack_url = forms.URLField(label="Substack URL")
     benchmarks = forms.MultipleChoiceField(
@@ -40,7 +44,10 @@ class PortfolioSetupForm(forms.Form):
 
     def clean_substack_url(self):
         url = self.cleaned_data["substack_url"].rstrip("/")
-        if Portfolio.objects.filter(substack_url=url).exists():
+        conflict_qs = Portfolio.objects.filter(substack_url=url, is_deleted=False)
+        if self.user:
+            conflict_qs = conflict_qs.exclude(user=self.user)
+        if conflict_qs.exists():
             raise forms.ValidationError(
                 "This Substack URL is already linked to an account."
             )
