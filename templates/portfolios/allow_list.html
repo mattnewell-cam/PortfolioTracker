@@ -58,7 +58,13 @@
             <input type="hidden" name="action" value="upload" />
             <div class="space-y-2">
               {{ upload_form.file.label_tag }}
-              {{ upload_form.file }}
+              <div class="space-y-1">
+                {{ upload_form.file }}
+                <p class="text-sm text-muted">Upload a CSV, TSV, or Excel (.xlsx) file containing one email per row.</p>
+                {% if upload_form.file.errors %}
+                  <p class="text-sm text-danger">{{ upload_form.file.errors.0 }}</p>
+                {% endif %}
+              </div>
             </div>
             <button type="submit" class="btn-secondary">Upload CSV/Excel</button>
           </form>

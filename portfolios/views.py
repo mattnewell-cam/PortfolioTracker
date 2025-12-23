@@ -393,10 +393,12 @@ def allow_list(request):
                 file = upload_form.cleaned_data["file"]
                 try:
                     emails_raw = []
-                    if file.name.lower().endswith(".csv"):
+                    file_name = file.name.lower()
+                    if file_name.endswith(".csv") or file_name.endswith(".tsv"):
                         file.seek(0)
                         data = file.read().decode("utf-8")
-                        reader = csv.reader(StringIO(data))
+                        delimiter = "\t" if file_name.endswith(".tsv") else ","
+                        reader = csv.reader(StringIO(data), delimiter=delimiter)
                         emails_raw = [row[0] for row in reader if row]
                     else:
                         if load_workbook is None:

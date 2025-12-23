@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from django import forms
 from django.contrib.auth import get_user_model
 
@@ -40,7 +42,22 @@ class AllowedEmailForm(forms.Form):
 
 
 class AllowedEmailUploadForm(forms.Form):
-    file = forms.FileField(widget=forms.ClearableFileInput(attrs={"class": "input"}))
+    file = forms.FileField(
+        widget=forms.ClearableFileInput(
+            attrs={
+                "class": "file-input",
+                "accept": ".csv,.tsv,.xlsx",
+            }
+        )
+    )
+
+    def clean_file(self):
+        file = self.cleaned_data["file"]
+        ext = Path(file.name).suffix.lower()
+        allowed_extensions = {".csv", ".tsv", ".xlsx"}
+        if ext not in allowed_extensions:
+            raise forms.ValidationError("File must be .csv, .tsv, or .xlsx.")
+        return file
 
 
 class AccountForm(forms.ModelForm):
