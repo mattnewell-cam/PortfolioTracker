@@ -492,6 +492,41 @@ class PortfolioPrivacyToggleTests(TestCase):
         )
         self.assertNotContains(response, 'Make Portfolio')
 
+    def test_toggle_to_private_can_keep_followers(self):
+        follower = User.objects.create_user('follower@example.com', password='pass', email='follower@example.com')
+        self.portfolio.followers.create(follower=follower)
+        self.client.login(username='owner', password='pass')
+        response = self.client.post(
+            reverse('portfolios:portfolio-toggle-privacy'),
+            {'privacy_choice': 'allow_followers'},
+        )
+        self.assertRedirects(response, reverse('portfolios:portfolio-detail'))
+        self.portfolio.refresh_from_db()
+        self.assertTrue(self.portfolio.is_private)
+        self.assertEqual(self.portfolio.followers.count(), 1)
+        self.assertTrue(
+            self.portfolio.allowed_emails.filter(email='follower@example.com').exists()
+        )
+
+    def test_toggle_to_private_can_remove_followers(self):
+        follower = User.objects.create_user('follower2@example.com', password='pass', email='follower2@example.com')
+        self.portfolio.followers.create(follower=follower)
+        PortfolioAllowedEmail.objects.create(
+            portfolio=self.portfolio, email='follower2@example.com'
+        )
+        self.client.login(username='owner', password='pass')
+        response = self.client.post(
+            reverse('portfolios:portfolio-toggle-privacy'),
+            {'privacy_choice': 'remove_followers'},
+        )
+        self.assertRedirects(response, reverse('portfolios:portfolio-detail'))
+        self.portfolio.refresh_from_db()
+        self.assertTrue(self.portfolio.is_private)
+        self.assertEqual(self.portfolio.followers.count(), 0)
+        self.assertFalse(
+            self.portfolio.allowed_emails.filter(email='follower2@example.com').exists()
+        )
+
 
 class BenchmarkContextTests(TestCase):
     def test_context_includes_all_benchmarks_and_defaults(self):

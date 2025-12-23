@@ -285,8 +285,34 @@ def toggle_privacy(request):
     portfolio = get_object_or_404(
         Portfolio, user=request.user, is_deleted=False
     )
-    portfolio.is_private = not portfolio.is_private
-    portfolio.save()
+    choice = request.POST.get("privacy_choice")
+
+    if portfolio.is_private:
+        portfolio.is_private = False
+        portfolio.save(update_fields=["is_private"])
+        return redirect("portfolios:portfolio-detail")
+
+    if choice == "allow_followers":
+        for follower_rel in portfolio.followers.select_related("follower"):
+            follower = follower_rel.follower
+            identifier = follower.email or follower.username
+            if identifier:
+                PortfolioAllowedEmail.objects.get_or_create(
+                    portfolio=portfolio, email=identifier
+                )
+    elif choice == "remove_followers":
+        follower_identifiers = []
+        for follower_rel in portfolio.followers.select_related("follower"):
+            follower = follower_rel.follower
+            identifier = follower.email or follower.username
+            if identifier:
+                follower_identifiers.append(identifier)
+        portfolio.followers.all().delete()
+        if follower_identifiers:
+            portfolio.allowed_emails.filter(email__in=follower_identifiers).delete()
+
+    portfolio.is_private = True
+    portfolio.save(update_fields=["is_private"])
     return redirect("portfolios:portfolio-detail")
 
 
