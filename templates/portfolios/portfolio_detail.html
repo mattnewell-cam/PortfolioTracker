@@ -39,9 +39,16 @@
 
     <div class="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
       {% if is_owner %}
-        <form method="post" action="{% url 'portfolios:portfolio-toggle-privacy' %}">
+        <form method="post" action="{% url 'portfolios:portfolio-toggle-privacy' %}" id="privacyToggleForm">
           {% csrf_token %}
-          <button type="submit" class="btn-secondary min-w-[9rem]">
+          <input type="hidden" name="privacy_choice" id="privacyChoiceInput">
+          <button
+            type="button"
+            class="btn-secondary min-w-[9rem]"
+            id="privacyToggleButton"
+            data-has-followers="{{ followers_count|yesno:'true,false' }}"
+            data-is-private="{{ portfolio.is_private|yesno:'true,false' }}"
+          >
             {% if portfolio.is_private %}
               Make Public
             {% else %}
@@ -71,6 +78,32 @@
 
   {% if private_view %}
     <p class="muted italic">This portfolio is private. Only the value chart is visible.</p>
+  {% endif %}
+
+  {% if is_owner %}
+  <div
+    id="privacyModal"
+    class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 px-4"
+    aria-modal="true"
+    role="dialog"
+  >
+    <div class="absolute inset-0" id="privacyModalBackdrop"></div>
+    <div class="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl">
+      <div class="p-6 space-y-4">
+        <div class="space-y-2">
+          <h3 class="text-xl font-semibold">Make portfolio private?</h3>
+          <p class="text-sm text-muted">
+            You have existing followers. Do you want them to keep seeing your portfolio and receiving emails?
+          </p>
+        </div>
+        <div class="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <button type="button" class="btn-secondary w-full sm:w-auto" id="privacyKeepFollowers">Yes, keep followers</button>
+          <button type="button" class="btn-danger w-full sm:w-auto" id="privacyRemoveFollowers">No, remove followers</button>
+          <button type="button" class="btn-ghost w-full sm:w-auto" id="privacyCancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
   {% endif %}
 
   {% if is_owner and not private_view %}
@@ -585,6 +618,54 @@
 
       // ===== Buy/Sell order widget =====
       {% if is_owner %}
+      const privacyForm = document.getElementById('privacyToggleForm');
+      const privacyButton = document.getElementById('privacyToggleButton');
+      const privacyChoiceInput = document.getElementById('privacyChoiceInput');
+      const privacyModal = document.getElementById('privacyModal');
+      const privacyModalBackdrop = document.getElementById('privacyModalBackdrop');
+      const keepFollowersBtn = document.getElementById('privacyKeepFollowers');
+      const removeFollowersBtn = document.getElementById('privacyRemoveFollowers');
+      const cancelPrivacyBtn = document.getElementById('privacyCancel');
+
+      const closePrivacyModal = () => {
+        privacyModal?.classList.add('hidden');
+        if (privacyChoiceInput) {
+          privacyChoiceInput.value = '';
+        }
+      };
+
+      const openPrivacyModal = () => {
+        privacyModal?.classList.remove('hidden');
+      };
+
+      const submitPrivacyForm = (choice) => {
+        if (!privacyForm || !privacyChoiceInput) return;
+        privacyChoiceInput.value = choice;
+        privacyForm.submit();
+      };
+
+      if (privacyButton) {
+        const hasFollowers = privacyButton.dataset.hasFollowers === 'true';
+        const isPrivate = privacyButton.dataset.isPrivate === 'true';
+
+        privacyButton.addEventListener('click', () => {
+          if (isPrivate) {
+            submitPrivacyForm('make_public');
+            return;
+          }
+          if (hasFollowers) {
+            openPrivacyModal();
+          } else {
+            submitPrivacyForm('make_private');
+          }
+        });
+      }
+
+      keepFollowersBtn?.addEventListener('click', () => submitPrivacyForm('allow_followers'));
+      removeFollowersBtn?.addEventListener('click', () => submitPrivacyForm('remove_followers'));
+      cancelPrivacyBtn?.addEventListener('click', closePrivacyModal);
+      privacyModalBackdrop?.addEventListener('click', closePrivacyModal);
+
       const lookupButton = document.getElementById('tickerLookupButton');
       const lookupInput = document.getElementById('tickerLookupInput');
       const tickerSearch = document.getElementById('tickerSearch');
