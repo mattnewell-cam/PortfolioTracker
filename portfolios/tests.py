@@ -760,6 +760,25 @@ class AccountDetailsTests(TestCase):
         setting = NotificationSetting.for_user(self.user)
         self.assertEqual(setting.preference, NotificationSetting.PREFERENCE_WEEKLY)
 
+    @patch('portfolios.views._fetch_substack_metadata')
+    def test_refresh_substack_name_updates_metadata(self, mock_fetch):
+        portfolio = Portfolio.objects.create(
+            user=self.user,
+            name='Old Name',
+            substack_url='https://owner.substack.com',
+            short_description='Old subtitle',
+        )
+        mock_fetch.return_value = ('New Name', 'New subtitle')
+        response = self.client.post(
+            reverse('portfolios:account-details'),
+            {'action': 'refresh_substack_name'},
+        )
+        self.assertRedirects(response, reverse('portfolios:account-details'))
+        portfolio.refresh_from_db()
+        mock_fetch.assert_called_once_with('https://owner.substack.com')
+        self.assertEqual(portfolio.name, 'New Name')
+        self.assertEqual(portfolio.short_description, 'New subtitle')
+
 
 class PortfolioDeleteTests(TestCase):
     def setUp(self):
