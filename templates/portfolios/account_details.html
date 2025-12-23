@@ -35,10 +35,26 @@
           <button type="submit" class="btn-primary" id="save-btn" disabled>Save changes</button>
         </form>
         {% if portfolio %}
-          <div class="space-y-2 border-t border-border pt-4">
+          <div class="space-y-4 border-t border-border pt-4">
             <h2 class="section-title">Linked Substack</h2>
-            <p class="muted"><strong class="text-text">Substack URL:</strong> {{ portfolio.substack_url }}</p>
-            <p class="muted"><strong class="text-text">Substack Name:</strong> {{ portfolio.name }}</p>
+            <form method="post" class="space-y-4" id="substack-name-form">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="refresh_substack_name">
+              <div class="space-y-2">
+                <label for="substack-name-input">Substack Name</label>
+                <div class="flex gap-2">
+                  <input id="substack-name-input" type="text" value="{{ portfolio.name }}" class="input flex-1" disabled>
+                  <button type="submit" class="btn-secondary" id="update-substack-name">Update</button>
+                </div>
+              </div>
+              <div class="space-y-2">
+                <label for="substack-url-input">Substack URL</label>
+                <div class="flex gap-2">
+                  <input id="substack-url-input" type="text" value="{{ portfolio.substack_url }}" class="input flex-1" disabled>
+                  <button type="button" class="btn-secondary" id="edit-substack-url">Edit</button>
+                </div>
+              </div>
+            </form>
           </div>
         {% endif %}
       </div>
@@ -116,6 +132,12 @@
           if (!confirmed) {
             event.preventDefault();
           }
+        });
+      }
+      const substackUrlBtn = document.getElementById('edit-substack-url');
+      if (substackUrlBtn) {
+        substackUrlBtn.addEventListener('click', function() {
+          alert('Changed your Substack URL but want to keep the same portfolio? Send an email to support@trackstack.uk.');
         });
       }
     });

@@ -13,7 +13,9 @@ from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from django.conf import settings
 from decimal import Decimal
+from urllib.parse import urlparse, urlunparse
 import random
+import feedparser
 
 from core.yfinance_client import get_quote
 from core.email import send_email
@@ -37,6 +39,22 @@ try:
     from openpyxl import load_workbook
 except ImportError:  # pragma: no cover
     load_workbook = None
+
+
+def _fetch_substack_metadata(substack_url):
+    parsed_url = urlparse(substack_url)
+    feed_url = urlunparse(
+        parsed_url._replace(path="/feed", params="", query="", fragment="")
+    )
+    title = None
+    subtitle = None
+    try:
+        feed = feedparser.parse(feed_url)
+        title = feed.feed.get("title")
+        subtitle = feed.feed.get("subtitle") or feed.feed.get("description")
+    except Exception:
+        pass
+    return title, subtitle
 
 
 def _get_position_value(symbol, qty):
@@ -648,6 +666,27 @@ def account_details(request):
                     "Your portfolio has been deleted and removed from public pages. "
                     "Its data is retained in case you need to restore it later.",
                 )
+            return redirect("portfolios:account-details")
+        elif action == "refresh_substack_name":
+            if portfolio and portfolio.substack_url:
+                title, subtitle = _fetch_substack_metadata(portfolio.substack_url)
+                if title:
+                    update_fields = []
+                    if title != portfolio.name:
+                        portfolio.name = title
+                        update_fields.append("name")
+                    if subtitle is not None and subtitle != portfolio.short_description:
+                        portfolio.short_description = subtitle
+                        update_fields.append("short_description")
+                    if update_fields:
+                        portfolio.save(update_fields=update_fields)
+                    messages.success(request, "Substack name updated.")
+                else:
+                    messages.error(
+                        request, "Unable to update Substack name. Please try again later."
+                    )
+            else:
+                messages.error(request, "No portfolio found to update.")
             return redirect("portfolios:account-details")
         else:
             form = AccountForm(request.POST, instance=request.user)
