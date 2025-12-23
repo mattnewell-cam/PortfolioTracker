@@ -44,12 +44,12 @@ class PortfolioSetupForm(forms.Form):
 
     def clean_substack_url(self):
         url = self.cleaned_data["substack_url"].rstrip("/")
-        conflict_qs = Portfolio.objects.filter(substack_url=url, is_deleted=False)
+        conflict_qs = Portfolio.objects.filter(substack_url=url)
         if self.user:
             conflict_qs = conflict_qs.exclude(user=self.user)
         if conflict_qs.exists():
             raise forms.ValidationError(
-                "This Substack URL is already linked to an account."
+                "Substack already linked to another trackstack account. If you have lost access to your previous trackstack account, email support@trackstack.uk"
             )
         return url
 

@@ -128,7 +128,37 @@ class RegistrationTests(TestCase):
             },
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'already linked')
+        self.assertContains(response, 'Substack already linked')
+        self.assertNotIn('pending_portfolio', self.client.session)
+
+    def test_cannot_claim_deleted_substack_owned_by_other_user(self):
+        owner = User.objects.create_user('owner@example.com', password='pass')
+        Portfolio.objects.create(
+            user=owner,
+            name='Owner Portfolio',
+            substack_url='https://claimed.substack.com',
+            is_deleted=True,
+        )
+        self.client.post(
+            reverse('register'),
+            {
+                'email': 'claimer@example.com',
+                'password1': 'strong-pass-123',
+                'password2': 'strong-pass-123',
+            },
+        )
+        code = self.client.session['pending_registration']['code']
+        self.client.post(reverse('verify-email'), {'code': code})
+        response = self.client.post(
+            reverse('add-portfolio'),
+            {
+                'display_name': 'Claimer',
+                'substack_url': 'https://claimed.substack.com',
+                'benchmarks': [BENCHMARK_CHOICES[0][0]],
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Substack already linked to another trackstack account')
         self.assertNotIn('pending_portfolio', self.client.session)
 
 

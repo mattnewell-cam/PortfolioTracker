@@ -100,13 +100,14 @@ def verify_portfolio(request):
 
     if request.method == "POST":
         conflict_qs = Portfolio.objects.filter(
-            substack_url=pending["substack_url"], is_deleted=False
+            substack_url=pending["substack_url"]
         )
         if existing_portfolio:
             conflict_qs = conflict_qs.exclude(pk=existing_portfolio.pk)
         if conflict_qs.exists():
             messages.error(
-                request, "This Substack URL is already linked to another account."
+                request,
+                "Substack already linked to another trackstack account. If you have lost access to your previous trackstack account, email support@trackstack.uk",
             )
             del request.session["pending_portfolio"]
             return redirect("add-portfolio")
