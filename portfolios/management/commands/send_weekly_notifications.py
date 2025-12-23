@@ -12,7 +12,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         since = timezone.now() - timedelta(days=7)
-        portfolios = Portfolio.objects.all().prefetch_related(
+        portfolios = Portfolio.objects.filter(is_deleted=False).prefetch_related(
             "orders", "followers__follower__notification_setting"
         )
         sent_count = 0
@@ -41,7 +41,7 @@ class Command(BaseCommand):
                     continue
 
                 lines = [
-                    f"{order.executed_at.strftime("%d %b")}: "
+                    f"{order.executed_at.strftime('%d %b')}: "
                     f"{portfolio.name} {'bought' if order.side == 'BUY' else 'sold'} "
                     f"{order.quantity} x {order.symbol} at {order.currency} {order.price_executed}"
                     for order in recent_orders

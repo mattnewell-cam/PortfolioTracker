@@ -640,6 +640,43 @@ class AccountDetailsTests(TestCase):
         self.assertEqual(setting.preference, NotificationSetting.PREFERENCE_WEEKLY)
 
 
+class PortfolioDeleteTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            'deleter@example.com', email='deleter@example.com', password='pass'
+        )
+        self.portfolio = Portfolio.objects.create(
+            user=self.user,
+            name='Delete Me',
+            substack_url='https://deleter.substack.com',
+            url_tag='delete-me',
+        )
+        self.client.login(username='deleter@example.com', password='pass')
+
+    def test_delete_portfolio_soft_deletes_and_hides(self):
+        response = self.client.post(
+            reverse('portfolios:account-details'),
+            {'action': 'delete_portfolio'},
+        )
+        self.assertRedirects(response, reverse('portfolios:account-details'))
+        self.portfolio.refresh_from_db()
+        self.assertTrue(self.portfolio.is_deleted)
+        self.assertTrue(self.portfolio.is_private)
+        self.assertIsNotNone(self.portfolio.deleted_at)
+
+    def test_deleted_portfolio_not_publicly_accessible(self):
+        self.portfolio.is_deleted = True
+        self.portfolio.save()
+
+        public_response = self.client.get(
+            reverse('portfolios:portfolio-public-detail', args=[self.portfolio.url_tag])
+        )
+        self.assertEqual(public_response.status_code, 404)
+
+        explore_response = self.client.get(reverse('portfolios:portfolio-explore'))
+        self.assertNotContains(explore_response, self.portfolio.name)
+
+
 class NotificationPreferenceTests(TestCase):
     def setUp(self):
         self.owner = User.objects.create_user(

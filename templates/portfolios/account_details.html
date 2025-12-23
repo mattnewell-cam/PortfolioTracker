@@ -71,6 +71,26 @@
         </div>
       </div>
     </div>
+
+    {% if portfolio %}
+      <div class="space-y-4">
+        <h2 class="text-3xl font-semibold">Delete Portfolio</h2>
+        <div class="card">
+          <div class="card-content space-y-4">
+            {% if portfolio.is_deleted %}
+              <p class="muted">Your portfolio has been deleted and is no longer visible on explore or public links. Its data is retained in case it needs to be restored later.</p>
+            {% else %}
+              <p class="muted">Deleting your portfolio will remove it from explore and make it inaccessible via its public link. Your data will be retained so it can be restored if needed.</p>
+              <form method="post" class="space-y-2" id="delete-portfolio-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete_portfolio">
+                <button type="submit" class="btn-danger w-full">Delete portfolio</button>
+              </form>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endif %}
   </div>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -89,6 +109,15 @@
         saveBtn.removeAttribute('disabled');
         emailInput.focus();
       });
+      const deleteForm = document.getElementById('delete-portfolio-form');
+      if (deleteForm) {
+        deleteForm.addEventListener('submit', function(event) {
+          const confirmed = confirm('Are you sure you want to delete your portfolio? This will remove it from explore and public access.');
+          if (!confirmed) {
+            event.preventDefault();
+          }
+        });
+      }
     });
   </script>
 {% endblock %}

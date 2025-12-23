@@ -24,10 +24,10 @@ class Command(BaseCommand):
 
         # Ensure the database schema exists (helpful on fresh setups)
         try:
-            portfolios = list(Portfolio.objects.all())
+            portfolios = list(Portfolio.objects.filter(is_deleted=False))
         except OperationalError:
             call_command("migrate", interactive=False)
-            portfolios = Portfolio.objects.all()
+            portfolios = Portfolio.objects.filter(is_deleted=False)
 
         benchmark_prices = get_benchmark_prices_usd(now.date())
 
