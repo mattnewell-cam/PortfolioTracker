@@ -723,8 +723,69 @@ class WeeklyNotificationCommandTests(TestCase):
         call_command('send_weekly_notifications')
 
         mock_send.assert_called_once()
-        recipients = mock_send.call_args.args[3]
+        sender, subject, body, recipients = mock_send.call_args.args[:4]
+        self.assertEqual(sender, 'notifications@trackstack.uk')
+        self.assertEqual(subject, 'Your weekly trade summaries')
         self.assertEqual(recipients, [follower.email])
+        self.assertIn('**__Owner Portfolio 2__**', body)
+        self.assertIn('AAPL', body)
+
+    @patch('portfolios.management.commands.send_weekly_notifications.send_email')
+    def test_weekly_command_combines_portfolios_per_user(self, mock_send):
+        follower = User.objects.create_user(
+            'weekly3@example.com', email='weekly3@example.com', password='pass'
+        )
+        setting = NotificationSetting.for_user(follower)
+        setting.preference = NotificationSetting.PREFERENCE_WEEKLY
+        setting.save()
+
+        first_owner = User.objects.create_user('owner3@example.com', email='owner3@example.com', password='pass')
+        second_owner = User.objects.create_user('owner4@example.com', email='owner4@example.com', password='pass')
+
+        portfolio_one = Portfolio.objects.create(
+            user=first_owner,
+            name='Growth Fund',
+            substack_url='https://owner3.substack.com',
+            url_tag='owner-portfolio-3',
+        )
+        portfolio_two = Portfolio.objects.create(
+            user=second_owner,
+            name='Value Fund',
+            substack_url='https://owner4.substack.com',
+            url_tag='owner-portfolio-4',
+        )
+
+        portfolio_one.followers.create(follower=follower)
+        portfolio_two.followers.create(follower=follower)
+
+        Order.objects.create(
+            portfolio=portfolio_one,
+            symbol='MSFT',
+            side='BUY',
+            quantity=2,
+            price_executed=50,
+            currency='USD',
+            fx_rate=1,
+        )
+        Order.objects.create(
+            portfolio=portfolio_two,
+            symbol='NFLX',
+            side='SELL',
+            quantity=3,
+            price_executed=200,
+            currency='USD',
+            fx_rate=1,
+        )
+
+        call_command('send_weekly_notifications')
+
+        mock_send.assert_called_once()
+        _, _, body, recipients = mock_send.call_args.args[:4]
+        self.assertEqual(recipients, [follower.email])
+        self.assertIn('**__Growth Fund__**', body)
+        self.assertIn('**__Value Fund__**', body)
+        self.assertIn('MSFT', body)
+        self.assertIn('NFLX', body)
 
 
 class SnapshotAdjustmentTests(TestCase):
