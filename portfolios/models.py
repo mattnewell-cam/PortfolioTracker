@@ -54,6 +54,8 @@ class Portfolio(models.Model):
     holdings = JSONField(default=dict)
     benchmarks = JSONField(default=list)
     is_private = models.BooleanField(default=False)
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
