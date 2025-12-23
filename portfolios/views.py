@@ -198,12 +198,14 @@ class PortfolioDetailView(LoginRequiredMixin, DetailView):
     context_object_name = "portfolio"
 
     def dispatch(self, request, *args, **kwargs):
-        if request.user.is_authenticated and not Portfolio.objects.filter(user=request.user).exists():
+        if request.user.is_authenticated and not Portfolio.objects.filter(
+            user=request.user, is_deleted=False
+        ).exists():
             return render(request, "portfolios/portfolio_empty.html")
         return super().dispatch(request, *args, **kwargs)
 
     def get_object(self, queryset=None):
-        return get_object_or_404(Portfolio, user=self.request.user)
+        return get_object_or_404(Portfolio, user=self.request.user, is_deleted=False)
 
     
     def get_context_data(self, **kwargs):
@@ -224,6 +226,8 @@ class PublicPortfolioDetailView(DetailView):
     slug_field = "url_tag"
     slug_url_kwarg = "tag"
 
+    def get_queryset(self):
+        return Portfolio.objects.filter(is_deleted=False)
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -260,7 +264,9 @@ class PublicPortfolioDetailView(DetailView):
 @login_required
 def toggle_privacy(request):
     """Toggle the current user's portfolio privacy flag."""
-    portfolio = get_object_or_404(Portfolio, user=request.user)
+    portfolio = get_object_or_404(
+        Portfolio, user=request.user, is_deleted=False
+    )
     portfolio.is_private = not portfolio.is_private
     portfolio.save()
     return redirect("portfolios:portfolio-detail")
@@ -269,7 +275,7 @@ def toggle_privacy(request):
 @require_POST
 @login_required
 def toggle_follow(request, tag):
-    portfolio = get_object_or_404(Portfolio, url_tag=tag)
+    portfolio = get_object_or_404(Portfolio, url_tag=tag, is_deleted=False)
     if portfolio.user == request.user:
         return redirect("portfolios:portfolio-public-detail", tag=tag)
     identifier = request.user.email or request.user.username
@@ -322,7 +328,9 @@ def lookup_quote(request):
 
 @login_required
 def allow_list(request):
-    portfolio = get_object_or_404(Portfolio, user=request.user, is_private=True)
+    portfolio = get_object_or_404(
+        Portfolio, user=request.user, is_private=True, is_deleted=False
+    )
     emails = portfolio.allowed_emails.all().order_by("email")
     email_form = AllowedEmailForm()
     upload_form = AllowedEmailUploadForm()
@@ -398,7 +406,7 @@ class PortfolioExploreView(ListView):
     context_object_name = "portfolios"
 
     def get_queryset(self):
-        qs = Portfolio.objects.all()
+        qs = Portfolio.objects.filter(is_deleted=False)
         query = self.request.GET.get("q")
         if query:
             qs = qs.filter(Q(name__icontains=query) | Q(substack_url__icontains=query))
@@ -425,7 +433,9 @@ class FollowedPortfoliosView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         return (
-            Portfolio.objects.filter(followers__follower=self.request.user)
+            Portfolio.objects.filter(
+                followers__follower=self.request.user, is_deleted=False
+            )
             .order_by("-created_at")
         )
 
@@ -446,7 +456,9 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
     template_name = "portfolios/portfolio_detail.html"
 
     def dispatch(self, request, *args, **kwargs):
-        self.portfolio = get_object_or_404(Portfolio, user=request.user)
+        self.portfolio = get_object_or_404(
+            Portfolio, user=request.user, is_deleted=False
+        )
         if request.method.lower() == "get":
             return redirect("portfolios:portfolio-detail")
         return super().dispatch(request, *args, **kwargs)
@@ -578,7 +590,7 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
 
 @login_required
 def portfolio_history(request):
-    p = Portfolio.objects.filter(user=request.user).first()
+    p = Portfolio.objects.filter(user=request.user, is_deleted=False).first()
     if not p:
         return JsonResponse({"error": "Not found"}, status=404)
 
@@ -625,6 +637,18 @@ def account_details(request):
                     request, "Notification preferences updated successfully."
                 )
                 return redirect("portfolios:account-details")
+        elif action == "delete_portfolio":
+            if portfolio and not portfolio.is_deleted:
+                portfolio.is_deleted = True
+                portfolio.is_private = True
+                portfolio.deleted_at = timezone.now()
+                portfolio.save(update_fields=["is_deleted", "is_private", "deleted_at"])
+                messages.success(
+                    request,
+                    "Your portfolio has been deleted and removed from public pages. "
+                    "Its data is retained in case you need to restore it later.",
+                )
+            return redirect("portfolios:account-details")
         else:
             form = AccountForm(request.POST, instance=request.user)
             old_email = request.user.email

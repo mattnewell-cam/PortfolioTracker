@@ -1,5 +1,6 @@
 import random
 import secrets
+import uuid
 
 import requests
 import feedparser
@@ -69,10 +70,10 @@ def verify_email(request):
 
 @login_required
 def add_portfolio(request):
-    if Portfolio.objects.filter(user=request.user).exists():
+    if Portfolio.objects.filter(user=request.user, is_deleted=False).exists():
         return redirect("portfolios:portfolio-detail")
     if request.method == "POST":
-        form = PortfolioSetupForm(request.POST)
+        form = PortfolioSetupForm(request.POST, user=request.user)
         if form.is_valid():
             nonce = secrets.token_hex(12)
             request.session["pending_portfolio"] = {
@@ -83,7 +84,7 @@ def add_portfolio(request):
             }
             return redirect("verify-portfolio")
     else:
-        form = PortfolioSetupForm()
+        form = PortfolioSetupForm(user=request.user)
     return render(request, "registration/portfolio_setup.html", {"form": form})
 
 
@@ -93,10 +94,20 @@ def verify_portfolio(request):
     if not pending:
         return redirect("add-portfolio")
 
+    existing_portfolio = Portfolio.objects.filter(user=request.user).first()
+    if existing_portfolio and not existing_portfolio.is_deleted:
+        return redirect("portfolios:portfolio-detail")
+
     if request.method == "POST":
-        if Portfolio.objects.filter(substack_url=pending["substack_url"]).exists():
+        conflict_qs = Portfolio.objects.filter(
+            substack_url=pending["substack_url"]
+        )
+        if existing_portfolio:
+            conflict_qs = conflict_qs.exclude(pk=existing_portfolio.pk)
+        if conflict_qs.exists():
             messages.error(
-                request, "This Substack URL is already linked to another account."
+                request,
+                "Substack already linked to another trackstack account. If you have lost access to your previous trackstack account, email support@trackstack.uk",
             )
             del request.session["pending_portfolio"]
             return redirect("add-portfolio")
@@ -125,16 +136,57 @@ def verify_portfolio(request):
                 except Exception:
                     pass
 
-                url_tag = pending["substack_url"].split("://")[1].split(".substack")[0]
+                host = pending["substack_url"].split("://")[1]
+                url_tag_base = host.split(".substack")[0]
+                url_tag = url_tag_base
+                counter = 1
+                while Portfolio.objects.filter(url_tag=url_tag).exclude(
+                    pk=getattr(existing_portfolio, "pk", None)
+                ).exists():
+                    url_tag = f"{url_tag_base}-{counter}"
+                    counter += 1
 
-                Portfolio.objects.create(
-                    user=request.user,
-                    name=title,
-                    substack_url=pending["substack_url"],
-                    url_tag=url_tag,
-                    benchmarks=pending["benchmarks"],
-                    short_description=subtitle,
-                )
+                if existing_portfolio and existing_portfolio.is_deleted:
+                    if existing_portfolio.substack_url == pending["substack_url"]:
+                        existing_portfolio.name = title
+                        existing_portfolio.short_description = subtitle
+                        existing_portfolio.benchmarks = pending["benchmarks"]
+                        existing_portfolio.is_deleted = False
+                        existing_portfolio.deleted_at = None
+                        existing_portfolio.save(
+                            update_fields=[
+                                "name",
+                                "short_description",
+                                "benchmarks",
+                                "is_deleted",
+                                "deleted_at",
+                            ]
+                        )
+                    else:
+                        existing_portfolio.orders.all().delete()
+                        existing_portfolio.snapshots.all().delete()
+                        existing_portfolio.followers.all().delete()
+                        existing_portfolio.allowed_emails.all().delete()
+                        existing_portfolio.holdings = {}
+                        existing_portfolio.cash_balance = Portfolio._meta.get_field("cash_balance").default
+                        existing_portfolio.name = title
+                        existing_portfolio.short_description = subtitle
+                        existing_portfolio.substack_url = pending["substack_url"]
+                        existing_portfolio.url_tag = url_tag
+                        existing_portfolio.benchmarks = pending["benchmarks"]
+                        existing_portfolio.is_private = False
+                        existing_portfolio.is_deleted = False
+                        existing_portfolio.deleted_at = None
+                        existing_portfolio.save()
+                else:
+                    Portfolio.objects.create(
+                        user=request.user,
+                        name=title,
+                        substack_url=pending["substack_url"],
+                        url_tag=url_tag or uuid.uuid4(),
+                        benchmarks=pending["benchmarks"],
+                        short_description=subtitle,
+                    )
                 display_name = pending["display_name"]
                 if request.user.first_name != display_name:
                     request.user.first_name = display_name
