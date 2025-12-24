@@ -615,7 +615,8 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
             send_email(
                 "notifications@trackstack.uk",
                 f"New trade in {self.portfolio.name}'s Portfolio",
-                f"{self.portfolio.name} {verb} {quantity} shares of {symbol} at {currency} {round(execution_price, 3)}\n\n ",
+                f"""{self.portfolio.name} {verb} {quantity} shares of {symbol} at {currency} {round(execution_price, 3)}.\n\n
+                            See portfolio: https://trackstack.uk/portfolios/public/{self.portfolio.url_tag}""",
                 follower_emails,
                 fail_silently=True,
             )
