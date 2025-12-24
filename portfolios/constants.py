@@ -1,7 +1,7 @@
 BENCHMARK_CHOICES = [
     ("^GSPC",   "S&P 500"),
     ("^IXIC",   "NASDAQ Composite"),
-    ("^RUT",    "Russell 2000 (US Mid"),
+    ("^RUT",    "Russell 2000 (US Mid)"),
     ("^FTLC",   "FTSE 350 (UK)"),
     ("^STOXXE", "STOXX Europe 600"),
     ("1308.T",   "TOPIX (Japan)"),
