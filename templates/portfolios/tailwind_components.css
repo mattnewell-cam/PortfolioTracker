@@ -96,7 +96,17 @@
   }
 
   .file-input {
-    @apply block w-full cursor-pointer rounded-lg border border-border bg-white px-3 text-sm text-text shadow-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-0 file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-brand file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brandHover;
+    @apply h-10 w-full overflow-hidden rounded-lg border border-border bg-white text-sm text-text shadow-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-0;
+    padding: 0;
+  }
+
+  .file-input::file-selector-button {
+    @apply h-full cursor-pointer border-border border-r bg-slate-300 px-4 text-sm font-semibold text-text transition-colors rounded-none;
+    margin: 0;
+  }
+
+  .file-input:hover::file-selector-button {
+    @apply bg-slate-400;
   }
 
   .checkbox {
