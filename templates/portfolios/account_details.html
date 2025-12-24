@@ -4,9 +4,9 @@
 
 {% block content %}
   <div class="space-y-6">
-    <h1 class="text-3xl font-semibold">Account Details</h1>
+    <h1 class="text-2xl font-semibold">Account Details</h1>
     <div class="card">
-      <div class="card-content space-y-6">
+      <div class="card-content space-y-6 pt-0">
         <form method="post" class="space-y-4">
           {% csrf_token %}
           <input type="hidden" name="action" value="account">
@@ -62,10 +62,9 @@
     </div>
 
     <div class="space-y-4">
-      <h2 class="text-3xl font-semibold">Following</h2>
+      <h2 class="text-2xl font-semibold">Following</h2>
       <div class="card">
         <div class="card-content space-y-4">
-          <h3 class="section-title">Portfolios you're following</h3>
           {% if followed_portfolios %}
             <div class="overflow-y-auto max-h-96 rounded-lg border border-border">
               <table class="table w-full mb-0">
@@ -110,10 +109,9 @@
     </div>
 
     <div class="space-y-4">
-      <h2 class="text-3xl font-semibold">Notification Settings</h2>
+      <h2 class="text-2xl font-semibold">Notification Settings</h2>
       <div class="card">
-        <div class="card-content space-y-4">
-          <h3 class="section-title">Notification Settings</h3>
+        <div class="card-content space-y-4 pt-0">
           <form method="post" class="space-y-4">
             {% csrf_token %}
             <input type="hidden" name="action" value="notifications">
@@ -139,13 +137,13 @@
 
     {% if portfolio %}
       <div class="space-y-4">
-        <h2 class="text-3xl font-semibold">Delete Portfolio</h2>
+        <h2 class="text-2xl font-semibold">Delete Portfolio</h2>
         <div class="card">
           <div class="card-content space-y-4">
             {% if portfolio.is_deleted %}
-              <p class="muted">Your portfolio has been deleted and is no longer visible on explore or public links. Its data is retained in case it needs to be restored later.</p>
+              <p class="muted">Your portfolio has been deleted. If this was a mistake, email support@trackstack.uk.</p>
             {% else %}
-              <p class="muted">Deleting your portfolio will remove it from explore and make it inaccessible via its public link. Your data will be retained so it can be restored if needed.</p>
+              <p class="muted">If you royally screwed something up, or just don't wish to be on TrackStack anymore, you can delete your portfolio. Your historical data will be maintained privately in case you ever wish to restore it.</p>
               <form method="post" class="space-y-2" id="delete-portfolio-form">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="delete_portfolio">
