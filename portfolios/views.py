@@ -237,6 +237,36 @@ class PortfolioDetailView(LoginRequiredMixin, DetailView):
         return ctx
 
 
+def _get_followed_portfolios_for_user(user):
+    followed_rels = (
+        PortfolioFollower.objects.select_related("portfolio", "portfolio__user")
+        .filter(follower=user, portfolio__is_deleted=False)
+        .order_by("-created_at")
+    )
+    followed_portfolios = []
+    for rel in followed_rels:
+        portfolio = rel.portfolio
+        snap = portfolio.snapshots.order_by("-timestamp").first()
+        if snap:
+            total_value = snap.total_value
+        else:
+            total_value = portfolio.cash_balance
+        owner_name = (
+            portfolio.user.first_name
+            or portfolio.user.username
+            or portfolio.user.email
+        )
+        followed_portfolios.append(
+            {
+                "portfolio": portfolio,
+                "owner_name": owner_name,
+                "total_value": total_value,
+                "followed_at": rel.created_at,
+            }
+        )
+    return followed_portfolios
+
+
 class PublicPortfolioDetailView(DetailView):
     model = Portfolio
     template_name = "portfolios/portfolio_detail.html"
@@ -672,6 +702,7 @@ def account_details(request):
     portfolio = Portfolio.objects.filter(user=request.user).first()
     notification_form = NotificationSettingForm(user=request.user)
     form = AccountForm(instance=request.user)
+    followed_portfolios = _get_followed_portfolios_for_user(request.user)
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "notifications":
@@ -683,6 +714,14 @@ def account_details(request):
                 messages.success(
                     request, "Notification preferences updated successfully."
                 )
+                return redirect("portfolios:account-details")
+        elif action == "unfollow_portfolio":
+            portfolio_id = request.POST.get("portfolio_id")
+            if portfolio_id:
+                PortfolioFollower.objects.filter(
+                    follower=request.user, portfolio_id=portfolio_id
+                ).delete()
+                messages.success(request, "Portfolio unfollowed.")
                 return redirect("portfolios:account-details")
         elif action == "delete_portfolio":
             if portfolio and not portfolio.is_deleted:
@@ -748,7 +787,12 @@ def account_details(request):
     return render(
         request,
         "portfolios/account_details.html",
-        {"portfolio": portfolio, "form": form, "notification_form": notification_form},
+        {
+            "portfolio": portfolio,
+            "form": form,
+            "notification_form": notification_form,
+            "followed_portfolios": followed_portfolios,
+        },
     )
 
 
