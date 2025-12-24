@@ -96,15 +96,15 @@
   }
 
   .file-input {
-    @apply block w-full overflow-hidden rounded-lg border border-border bg-white text-sm text-text shadow-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-0;
+    @apply flex h-11 w-full items-center overflow-hidden rounded-lg border border-border bg-white text-sm text-text shadow-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-0;
   }
 
   .file-input::file-selector-button {
-    @apply h-full cursor-pointer border-r border-border bg-brand px-4 text-sm font-semibold text-white transition-colors rounded-none;
+    @apply h-full cursor-pointer border-r border-border bg-slate-300 px-4 text-sm font-semibold text-text transition-colors rounded-none;
   }
 
   .file-input:hover::file-selector-button {
-    @apply bg-brandHover;
+    @apply bg-slate-400;
   }
 
   .checkbox {
