@@ -5,7 +5,7 @@
   <div class="card shadow-sm">
     <div class="card-content space-y-4">
       <h1 class="text-2xl font-semibold">Verify Substack</h1>
-      <p class="muted">Add the following code to your Substack about page (<a href="{{ substack_url }}">{{ substack_url }}</a>) then click verify:</p>
+      <p class="muted">Insert the following code anywhere Substack about page (<a href="{{ substack_url }}">{{ substack_url }}/about</a>) then click verify (you can delete it after):</p>
       <pre>{{ nonce }}</pre>
       {% if messages %}
         {% for message in messages %}
