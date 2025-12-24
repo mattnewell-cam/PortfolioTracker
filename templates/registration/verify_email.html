@@ -5,7 +5,7 @@
   <div class="card shadow-sm">
     <div class="card-content space-y-4">
       <h1 class="text-2xl font-semibold">Verify Email</h1>
-      <p class="muted">Enter the 6-digit code sent to your email. (These very often end up in junk so be sure to check there.)</p>
+      <p class="muted">Enter the 6-digit code sent to your email. (These often end up in junk so be sure to check there.)</p>
       <form method="post" class="space-y-4">
         {% csrf_token %}
         <div class="space-y-2">
@@ -13,7 +13,10 @@
           <input type="text" name="code" class="input" id="{{ form.code.id_for_label }}" required>
           {% if form.code.errors %}<div class="text-danger text-sm">{{ form.code.errors }}</div>{% endif %}
         </div>
-        <button class="btn-primary w-full" type="submit">Verify</button>
+        <div class="flex flex-wrap gap-2">
+          <button class="btn-primary" type="submit">Verify</button>
+          <button class="btn-secondary" type="submit" name="resend" value="1" formnovalidate>Resend verification code</button>
+        </div>
       </form>
     </div>
   </div>
