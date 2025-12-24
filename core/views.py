@@ -50,6 +50,20 @@ def verify_email(request):
     if not pending:
         return redirect("register")
 
+    if request.method == "POST" and request.POST.get("resend"):
+        code = f"{random.randint(0, 999999):06d}"
+        pending["code"] = code
+        request.session["pending_registration"] = pending
+        send_email(
+            "verify@trackstack.uk",
+            "Verify your account",
+            f"Your verification code is {code}",
+            [pending["email"]],
+            fail_silently=True,
+        )
+        messages.success(request, "A new verification code has been sent.")
+        return redirect("verify-email")
+
     if request.method == "POST":
         form = EmailVerificationForm(request.POST)
         if form.is_valid():
