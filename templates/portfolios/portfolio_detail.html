@@ -128,8 +128,8 @@
 
         <div id="orderLayout" class="hidden grid gap-4 lg:grid-cols-[2fr_1.2fr] lg:items-stretch">
           <div id="tickerInfo" class="hidden overflow-hidden rounded-xl border border-border bg-slate-50">
-            <div class="flex h-full items-center">
-              <div class="flex-1 space-y-4 px-4 py-3">
+            <div class="flex h-full items-stretch">
+              <div class="flex flex-1 flex-col justify-center space-y-4 px-4 py-3">
                 <div class="flex items-center justify-between gap-3">
                   <div class="text-xl font-semibold leading-tight" id="tickerCompany"></div>
                   <span class="badge" id="marketBadge"></span>
@@ -139,7 +139,7 @@
                   <div class="text-2xl font-semibold text-right" id="tickerPrice"></div>
                 </div>
               </div>
-              <button type="button" class="w-[22%] min-w-[110px] max-w-[140px] bg-slate-200 px-4 text-sm font-semibold text-text transition-colors hover:bg-slate-300" id="changeTickerButton">Change ticker</button>
+              <button type="button" class="flex h-full w-[22%] min-w-[110px] max-w-[140px] items-center justify-center border-l border-border bg-slate-300 px-4 text-sm font-semibold text-text transition-colors hover:bg-slate-400" id="changeTickerButton">Change ticker</button>
             </div>
           </div>
 
