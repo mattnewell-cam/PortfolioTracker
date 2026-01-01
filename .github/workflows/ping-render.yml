@@ -28,4 +28,4 @@ jobs:
           fi
 
           echo "Pinging $RENDER_PING_URL"
-          curl --head --fail --show-error --max-time 10 "$RENDER_PING_URL"
+          curl --fail --show-error --max-time 10 "$RENDER_PING_URL"
