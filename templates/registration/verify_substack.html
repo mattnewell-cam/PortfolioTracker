@@ -5,7 +5,7 @@
   <div class="card shadow-sm">
     <div class="card-content space-y-4">
       <h1 class="text-2xl font-semibold">Verify Substack</h1>
-      <p class="muted">Insert the following code anywhere Substack about page (<a href="{{ substack_url }}">{{ substack_url }}/about</a>) then click verify (you can delete it after):</p>
+      <p class="muted">Insert the following code anywhere Substack about page (<a href="{{ substack_url }}/about">{{ substack_url }}/about</a>) then click verify (you can delete it after):</p>
       <pre>{{ nonce }}</pre>
       {% if messages %}
         {% for message in messages %}
@@ -16,6 +16,9 @@
         {% csrf_token %}
         <button class="btn-primary w-full" type="submit">Verify</button>
       </form>
+      {% if error %}
+        <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+      {% endif %}
     </div>
   </div>
 </div>

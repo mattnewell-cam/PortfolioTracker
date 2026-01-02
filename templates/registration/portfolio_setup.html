@@ -8,12 +8,12 @@
       <form method="post" class="space-y-4">
         {% csrf_token %}
         <div class="space-y-2">
-          <label for="{{ form.display_name.id_for_label }}" class="">Display Name</label>
+          <label for="{{ form.display_name.id_for_label }}" class="">Your Display Name</label>
           <input type="text" name="display_name" class="input" id="{{ form.display_name.id_for_label }}" required>
           {% if form.display_name.errors %}<div class="text-danger text-sm">{{ form.display_name.errors }}</div>{% endif %}
         </div>
         <div class="space-y-2">
-          <label for="{{ form.substack_url.id_for_label }}" class="">Substack URL</label>
+          <label for="{{ form.substack_url.id_for_label }}" class="">Substack URL (https://example.substack​.com/)</label>
           <input type="url" name="substack_url" class="input" id="{{ form.substack_url.id_for_label }}" required>
           {% if form.substack_url.errors %}<div class="text-danger text-sm">{{ form.substack_url.errors }}</div>{% endif %}
         </div>

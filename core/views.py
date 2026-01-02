@@ -104,6 +104,9 @@ def add_portfolio(request):
 
 @login_required
 def verify_portfolio(request):
+
+    error = None
+
     pending = request.session.get("pending_portfolio")
     if not pending:
         return redirect("add-portfolio")
@@ -209,13 +212,11 @@ def verify_portfolio(request):
                 return redirect("portfolios:portfolio-detail")
         except requests.RequestException:
             pass
-        messages.error(
-            request,
-            "Substack verification failed. Ensure the nonce is present on your about page.",
-        )
+
+        error = "Substack verification failed. Ensure the URL is formatted correctly (https://example.substack​.com/) and that you have hit save."
 
     return render(
         request,
         "registration/verify_substack.html",
-        {"nonce": pending["nonce"], "substack_url": pending["substack_url"]},
+        {"nonce": pending["nonce"], "substack_url": pending["substack_url"], "error": error},
     )
