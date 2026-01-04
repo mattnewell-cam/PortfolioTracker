@@ -17,10 +17,10 @@ jobs:
         run: |
           current_hour=$(date +%H)
 
-          if [ "$current_hour" -lt 10 ] || [ "$current_hour" -ge 22 ]; then
-            echo "Current UK hour ($current_hour) outside 10:00-22:00 window; skipping ping."
-            exit 0
-          fi
+          # if [ "$current_hour" -lt 10 ] || [ "$current_hour" -ge 22 ]; then
+          #   echo "Current UK hour ($current_hour) outside 10:00-22:00 window; skipping ping."
+          #   exit 0
+          # fi
 
           if [ -z "$RENDER_PING_URL" ]; then
             echo "RENDER_PING_URL secret is not set; skipping ping."
@@ -28,4 +28,4 @@ jobs:
           fi
 
           echo "Pinging $RENDER_PING_URL"
-          curl --fail --show-error --max-time -L 10 "$RENDER_PING_URL"
+          curl --fail --show-error --max-time 10 -L "$RENDER_PING_URL"
